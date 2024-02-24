@@ -20,3 +20,6 @@ __pycache__/
 
 # Mac OS X temporary files
 .DS_Store
+
+#  Numpy
+*.pt
