@@ -279,15 +279,18 @@ class TimeSeriesTransformer(nn.Module):
 
         #print("From model.forward(): Size of src as given to forward(): {}".format(src.size()))
         #print("From model.forward(): tgt size = {}".format(tgt.size()))
-
+        print(src.shape)
+        print(f'src {src}')
         # Pass throguh the input layer right before the encoder
         src = self.encoder_input_layer(src) # src shape: [batch_size, src length, dim_val] regardless of number of input features
         #print("From model.forward(): Size of src after input layer: {}".format(src.size()))
-
+        # print(src.shape)
+        # print(src)
         # Pass through the positional encoding layer
         src = self.positional_encoding_layer(src) # src shape: [batch_size, src length, dim_val] regardless of number of input features
         #print("From model.forward(): Size of src after pos_enc layer: {}".format(src.size()))
-
+        # print(src.shape)
+        # print(src)
         # Pass through all the stacked encoder layers in the encoder
         # Masking is only needed in the encoder if input sequences are padded
         # which they are not in this time series use case, because all my
@@ -297,11 +300,15 @@ class TimeSeriesTransformer(nn.Module):
             src=src
             )
         #print("From model.forward(): Size of src after encoder: {}".format(src.size()))
-
+        # print(src.shape)
+        # print(src)
         # Pass decoder input through decoder input layer
+        print(tgt.shape)
+        print(f'tgt {tgt}')
         decoder_output = self.decoder_input_layer(tgt) # src shape: [target sequence length, batch_size, dim_val] regardless of number of input features
         #print("From model.forward(): Size of decoder_output after linear decoder layer: {}".format(decoder_output.size()))
-
+        # print(decoder_output.shape)
+        # print(decoder_output)
         #if src_mask is not None:
             #print("From model.forward(): Size of src_mask: {}".format(src_mask.size()))
         #if tgt_mask is not None:
@@ -314,12 +321,15 @@ class TimeSeriesTransformer(nn.Module):
             tgt_mask=tgt_mask,
             memory_mask=src_mask
             )
-
+        # print(decoder_output.shape)
+        # print(decoder_output)
         #print("From model.forward(): decoder_output shape after decoder: {}".format(decoder_output.shape))
 
         # Pass through linear mapping
         decoder_output = self.linear_mapping(decoder_output) # shape [batch_size, target seq len]
         #print("From model.forward(): decoder_output size after linear_mapping = {}".format(decoder_output.size()))
-
+        # print(decoder_output.shape)
+        # print(decoder_output)
         return decoder_output
     
+

@@ -4,6 +4,8 @@ from torch.utils.data import Dataset
 import pandas as pd
 from typing import Tuple
 
+from cprint import *
+
 class TransformerDataset(Dataset):
     """
     Dataset class used for transformer models.
@@ -133,7 +135,7 @@ class TransformerDataset(Dataset):
 
         # The target sequence against which the model output will be compared to compute loss
         trg_y = sequence[-target_seq_len:]
-
+        cprint.err(f"trg_y = {trg_y}")
         assert len(trg_y) == target_seq_len, "Length of trg_y does not match target sequence length"
 
         return src, trg, trg_y.squeeze(-1) # change size from [batch_size, target_seq_len, num_features] to [batch_size, target_seq_len] 
