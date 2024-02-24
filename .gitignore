@@ -1,5 +1,6 @@
 runs/
 runs_interleaved/
+models/
 mock_runs/
 dataset_0_5m_spacing.h5
 dataset.h5
