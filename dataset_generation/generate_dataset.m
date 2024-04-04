@@ -19,7 +19,7 @@ MAX_ABSOLUTE_PATH_LOSS = 200;       % Discard rays below this threshold (dBm)
 % Sampling params
 ANTENNA_HEIGHT = 1.5;               % How far above the ground the antenna is (meters)
 TX_POSITION = [100; 170];           % Meters
-RX_GRID_SPACING = 0.50;             % How far apart to sample the model surface (meters)
+RX_GRID_SPACING = 0.5;             % How far apart to sample the model surface (meters)
 RX_GRID_AREA = [50, 150, ...
                 120, 220];          % Meters x1, x2, y1, y2 (set to [] to use the whole scene)
 MAX_RAYS = 100;                     % Maximum number of rays to save in the dataset per RX
@@ -45,9 +45,15 @@ if isempty(RX_GRID_AREA)
 else
     bounds = RX_GRID_AREA;
 end
+
+disp(bounds)
+
 x = bounds(1):RX_GRID_SPACING:bounds(2);
 y = bounds(3):RX_GRID_SPACING:bounds(4);
 rx_positions = zeros(3, length(x)*length(y));
+
+disp(x)
+disp(y)
 
 % Predict how long the dataset will take
 unit = "seconds";
