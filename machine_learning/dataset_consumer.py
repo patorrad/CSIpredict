@@ -6,6 +6,8 @@ import sys
 import os
 from typing import Callable
 from cprint import *
+from sklearn.cluster import DBSCAN
+from sklearn.ensemble import IsolationForest
 
 def breesenham(x0, y0, x1, y1):
     """
@@ -182,7 +184,6 @@ class DatasetConsumer:
     def print_info(self):
         print(json.dumps(self.attributes, indent=2))
         
-
     def generate_straight_paths(self, num_paths, path_length_n=20):
         """
         Generate straight paths in the rx_positions array.
@@ -278,7 +279,7 @@ class DatasetConsumer:
         csi_phases = np.swapaxes(csi_phases, 0, 1)
         csi_phases = np.swapaxes(csi_phases, 1, 2)
         return csi_phases
-###    
+        
     def paths_to_dataset_path_loss_only(self, path_indices):
         """
         Generate a torch dataset from the given path indices
@@ -290,7 +291,7 @@ class DatasetConsumer:
         ray_path_losses = np.swapaxes(ray_path_losses, 1, 2)
         # cprint.info(f'self.ray_path_losses.shape {self.ray_path_losses.T.shape}')
         return ray_path_losses
-###   
+   
     def get_num_rays(self, path_indices):
         """
         Returns the number of paths based on for each path provided by the path_indicies
@@ -360,6 +361,73 @@ class DatasetConsumer:
     ## Cluster the rays at the points and return an array of clustered points
     ## Ex - [1,20,18,2,23,4] --> return [[1,2,4],[20,28,23]]
     ## Need to add a clustered average for all of the points
+
+    def weighted_aoa_average(self, mags, aoas):
+        """
+        Generate a torch dataset from the given path indices to contain
+        the mags, number of rays, and aoa average 
+        Shape: (num_paths, path_length_n, 128)
+        """
+        def convert_negative_to_positive(angles):
+            # Convert angles to degrees
+            angles_degrees = np.rad2deg(angles)
+            # Convert negative angles to positive within the range [0, 360)
+            converted_angles_degrees = np.where(angles_degrees < 0, 360 + angles_degrees, angles_degrees)
+            # Convert back to radians
+            converted_angles_radians = np.radians(converted_angles_degrees)
+            return converted_angles_radians
+        
+        mags_sample = np.trim_zeros(mags) # this is a point that seems to be in the bot right based on the ray angles
+        aoas_sample = np.trim_zeros(np.deg2rad(aoas))
+
+        converted_aoas_angles = convert_negative_to_positive(aoas_sample)         # Wrap angles
+
+        # Reshape the wrapped angles
+        data_aoas = converted_aoas_angles.reshape(-1, 1)
+
+        ########
+        # Isolation Forest - Isolating the outlier points and getting the inliers
+        ######### 
+        
+        # Define Isolation Forest model
+        isolation_forest = IsolationForest()
+
+        # Fit the model to the data
+        isolation_forest.fit(data_aoas)
+
+        # Predict outliers (-1) and inliers (1)
+        cluster_labels = isolation_forest.predict(data_aoas)
+
+        # Get inlier indicies 
+        inlier_indicies = np.where(cluster_labels == 1)
+        
+        # Get the data values (mags and aoas) for the linear indicies
+        data_aoaos_inliers = data_aoas[inlier_indicies]
+        aoas_inliers = converted_aoas_angles[inlier_indicies]
+        mags_inliers = mags_sample[inlier_indicies]
+
+        ########
+        # Apply the DBSCAN clustering to the dataset with outliers removed
+        ########
+        # Perform clustering with DBSCAN on the "wrapped" angles, from 0 to 360 degrees
+        dbscan_aoa = DBSCAN(eps=0.1, min_samples=3)
+        aoa_cluster_labels = dbscan_aoa.fit_predict(data_aoaos_inliers) # if any of the aoa clusters are negative then they aren't part of a group
+
+        # Get each of the clusters, note that negative labels are outliers and should be removed
+        unique_labels = np.unique(aoa_cluster_labels)
+        unique_labels = unique_labels[np.where(unique_labels >= 0)]
+        cluster_averages = []
+
+        # find the weighted average of each of the clusters and append to cluster_averages
+        for label in unique_labels:
+            print(label)
+            cluster = np.where(aoa_cluster_labels == label)
+            print(np.rad2deg(aoas_inliers[cluster]))
+            weighted_average = np.average(np.rad2deg(aoas_inliers[cluster]), weights=mags_inliers[cluster])
+            cluster_averages.append(weighted_average)
+        
+        # print(cluster_averages)s
+        return(cluster_averages)
 
 
     def paths_to_dataset_rays_aoas_trig(self, path_indices, pad = 0):
@@ -629,9 +697,22 @@ d = DatasetConsumer(DATASET)
 # d.print_info()
 
 # # Start with curved paths
-paths = d.generate_curved_paths(200, path_length_n=20)
+# paths = d.generate_curved_paths(200, path_length_n=20)
 
-paths = d.generate_straight_paths(1)
+# paths = d.generate_straight_paths(1)
+
+aoas = d.ray_aoas
+mags_fromloss = d.ray_path_losses
+
+r_pt = 0
+print("rando")
+print(r_pt)
+
+mags_sample = mags_fromloss[:,r_pt] # this is a point that seems to be in the bot right based on the ray angles
+aoas_sample = aoas[:,0,r_pt]
+
+d.weighted_aoa_average(mags_sample, aoas_sample)
+
 # print(paths.shape)
 # print(paths)
 # mags = d.paths_to_dataset_mag_only(paths)
@@ -642,7 +723,7 @@ paths = d.generate_straight_paths(1)
 # print(num_rays)
 # print("######################")
 
-aoa_ray_mag = d.paths_to_dataset_mag_rays_aoas(paths) # returns a tuple (azimuths, elevations)
+# aoa_ray_mag = d.paths_to_dataset_mag_rays_aoas(paths) # returns a tuple (azimuths, elevations)
 
 
 # # Create left, center, and right paths
