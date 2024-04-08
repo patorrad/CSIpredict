@@ -10,7 +10,7 @@ from cprint import *
 from dataset_consumer import DatasetConsumer
 
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans, DBSCAN, SpectralClustering
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 
@@ -130,11 +130,152 @@ def convert_negative_to_positive(angles):
     converted_angles_radians = np.radians(converted_angles_degrees)
     return converted_angles_radians
 
-mags_sample = np.trim_zeros(mags_3[0, 1, :].reshape(-1)) #mags_botleft #mags_3[0, 1, :].reshape(-1) # # #  # Reshape to (100,)
-aoas_sample = np.trim_zeros(aoas_3[0, 1, :])#aoas_botleft #aoas_3[0, 1, :]# # # # Reshape to (100,)
+# mags_sample = np.trim_zeros(mags_3[0, 1, :].reshape(-1)) #mags_botleft #mags_3[0, 1, :].reshape(-1) # # #  # Reshape to (100,)
+# aoas_sample = np.trim_zeros(aoas_3[0, 1, :])#aoas_botleft #aoas_3[0, 1, :]# # # # Reshape to (100,)
 
 # mags_sample = np.trim_zeros(mags_botleft) # # #  # Reshape to (100,)
 # aoas_sample = np.trim_zeros(aoas_botleft) #aoas_3[0, 1, :]# # # # Reshape to (100,)
+
+# mags_sample = np.trim_zeros(mags_3[0, 1, :].reshape(-1)) #mags_botleft #mags_3[0, 1, :].reshape(-1) # # #  # Reshape to (100,)
+# aoas_sample = np.trim_zeros(aoas_3[0, 1, :])#aoas_botleft #aoas_3[0, 1, :]# # # # Reshape to (100,)
+
+mags_sample = np.trim_zeros(mags_fromloss[:,7890]) # this is a point that seems to be in the bot right based on the ray angles
+aoas_sample = np.trim_zeros(np.deg2rad(aoas[:,0,7890]))
+
+
+
+
+# Function to wrap angles to the range [0, 360)
+
+# Wrap angles
+converted_aoas_angles = convert_negative_to_positive(aoas_sample)
+#print(converted_aoas_angles[:20])
+
+# Reshape the wrapped angles
+data_aoas = converted_aoas_angles.reshape(-1, 1)
+
+def kmeans_cluster_aoas(data_aoas,converted_aoas_angles,mag_samples):
+    means_aoa = []
+    inertias_aoa = []
+    optimal_k_aoa = None
+        
+    for k in range(1, 10): 
+        kmeans_aoa = KMeans(n_clusters=k)
+        kmeans_aoa.fit(data_aoas)
+        
+        inertias_aoa.append(kmeans_aoa.inertia_)
+        means_aoa.append(k)
+
+        # Check if we've found the optimal k
+        if k > 1 and inertias_aoa[-2] - inertias_aoa[-1] < 0.1 * (inertias_aoa[0] - inertias_aoa[-1]):
+            optimal_k_aoa = k - 1  # Subtracting 1 to get the last value of k
+            break
+
+    # If optimal_k is still None, it means we haven't found the optimal k
+    if optimal_k_aoa is None:
+        # Alternatively, you could set optimal_k to the last value of k
+        optimal_k_aoa = k
+
+    print("Optimal k for just aoa:", optimal_k_aoa)
+
+    # Plotting a separate plot using the k means clustering
+    kmeans_aoa = KMeans(n_clusters=optimal_k_aoa)
+    kmeans_aoa.fit(data_aoas)
+
+    fig = plt.subplots(subplot_kw=dict(projection="polar"))
+    plt.scatter(converted_aoas_angles, mag_samples, c=kmeans_aoa.labels_)
+    plt.colorbar(label='Cluster Number')
+    plt.title('Clustered Data, only AoAs')
+    plt.xlabel('AoA')
+    plt.ylabel('Magnitude')
+    plt.savefig('kmeans-aoa-only.png')
+
+    # Look at an elbow plot
+    plt.figure(figsize=(10, 5))
+    plt.plot(means_aoa, inertias_aoa, 'o-')
+    plt.xlabel('Number of Clusters')
+    plt.ylabel('Inertia')
+    plt.grid(True)
+    plt.savefig('kmeans-test-elbow-plot-aoa.png')
+
+
+
+########
+# Trying out Isolation Forest
+######### 
+
+# Define Isolation Forest model
+isolation_forest = IsolationForest()
+
+# Fit the model to the data
+isolation_forest.fit(data_aoas)
+
+# Predict outliers (-1) and inliers (1)
+cluster_labels = isolation_forest.predict(data_aoas)
+
+inlier_indicies = np.where(cluster_labels == 1)
+
+data_aoaos_inliers = data_aoas[inlier_indicies]
+aoas_inliers = converted_aoas_angles[inlier_indicies]
+mags_inliers = mags_sample[inlier_indicies]
+
+# Plot clustered data
+fig = plt.subplots(subplot_kw=dict(projection="polar"))
+plt.scatter(converted_aoas_angles, mags_sample, c=cluster_labels)
+plt.title('Clustered Data, Outlier Clustering (Isolation Forest)')
+plt.xlabel('AoAs')
+plt.ylabel('Magnitudes')
+plt.colorbar(label='Cluster Label')
+plt.savefig('IsolationForest-test-plot.png')
+
+# kmeans_cluster_aoas(data_aoaos_inliers, aoas_inliers, mags_inliers)
+
+########
+# Trying out DBSCAN clustering
+######### 
+
+# # Perform clustering with DBSCAN on the wrapped angles
+dbscan_aoa = DBSCAN(eps=0.2, min_samples=5)
+aoa_cluster_labels = dbscan_aoa.fit_predict(data_aoaos_inliers) # if any of the aoa clusters are negative then they aren't part of a group
+
+# Plot clustered data
+aoaos_inliers = converted_aoas_angles[inlier_indicies]
+mags_inliers = mags_sample[inlier_indicies]
+fig = plt.subplots(subplot_kw=dict(projection="polar"))
+print(aoa_cluster_labels)
+print(np.where(aoa_cluster_labels < 0))
+plt.scatter(aoaos_inliers, mags_inliers, c=aoa_cluster_labels)
+plt.title('Clustered Data, only AoAs (DBSCAN)')
+plt.xlabel('AoAs')
+plt.ylabel('Magnitudes')
+plt.colorbar(label='Cluster Label')
+plt.savefig('DBSCAN-test-plot.png')
+
+
+
+########
+# Trying out Local Neighbors
+######### 
+
+# # Define Local Outlier Factor model
+# lof = LocalOutlierFactor()
+
+# # Fit the model to the data and predict outlier scores
+# # lower/negative outlier scores mean less relation, higher/positive scores mean closer relation (inlier)
+# outlier_scores = lof.fit_predict(data_aoas)
+
+# # Plot clustered data
+# fig = plt.subplots(subplot_kw=dict(projection="polar"))
+# plt.scatter(converted_aoas_angles, mags_sample, c=outlier_scores)
+# plt.title('Clustered Data, Outlier Detection (Local Outlier Factor)')
+# plt.xlabel('AoAs')
+# plt.ylabel('Magnitudes')
+# plt.colorbar(label='Outlier Score')
+# plt.savefig('LocalNeighbors-test-plot.png')
+
+# after identifying outliers, I can apply kMeans
+
+
 
 ########
 # Trying out k-means clustering
@@ -226,85 +367,3 @@ aoas_sample = np.trim_zeros(aoas_3[0, 1, :])#aoas_botleft #aoas_3[0, 1, :]# # # 
 # plt.ylabel('Inertia')
 # plt.grid(True)
 # plt.savefig('kmeans-test-elbow-plot.png')
-
-########
-# Trying out DBSCAN clustering
-######### 
-
-# Function to wrap angles to the range [0, 360)
-
-# Wrap angles
-converted_aoas_angles = convert_negative_to_positive(aoas_sample)
-#print(converted_aoas_angles[:20])
-
-# Reshape the wrapped angles
-data_aoas = converted_aoas_angles.reshape(-1, 1)
-
-
-########
-# Trying out Isolation Forest
-######### 
-
-# Define Isolation Forest model
-isolation_forest = IsolationForest()
-
-# Fit the model to the data
-isolation_forest.fit(data_aoas)
-
-# Predict outliers (-1) and inliers (1)
-cluster_labels = isolation_forest.predict(data_aoas)
-
-inlier_indicies = np.where(cluster_labels == 1)
-
-data_aoaos_inliers = data_aoas[inlier_indicies]
-
-# Plot clustered data
-fig = plt.subplots(subplot_kw=dict(projection="polar"))
-plt.scatter(converted_aoas_angles, mags_sample, c=cluster_labels)
-plt.title('Clustered Data, Outlier Clustering (Isolation Forest)')
-plt.xlabel('AoAs')
-plt.ylabel('Magnitudes')
-plt.colorbar(label='Cluster Label')
-plt.savefig('IsolationForest-test-plot.png')
-
-# plug into DBScan now
-# Define DBSCAN parameters
-eps = 5 # Maximum distance between two samples to be considered as in the same neighborhood
-min_samples = 2  # Minimum number of samples required to form a dense region (core point)
-
-# Perform clustering with DBSCAN on the wrapped angles
-dbscan_aoa = DBSCAN(eps=eps, min_samples=min_samples)
-aoa_cluster_labels = dbscan_aoa.fit_predict(data_aoaos_inliers)
-
-
-# Plot clustered data
-aoaos_inliers = converted_aoas_angles[inlier_indicies]
-mags_inliers = mags_sample[inlier_indicies]
-fig = plt.subplots(subplot_kw=dict(projection="polar"))
-plt.scatter(aoaos_inliers, mags_inliers, c=aoa_cluster_labels)
-plt.title('Clustered Data, only AoAs (DBSCAN)')
-plt.xlabel('Wrapped AoAs')
-plt.ylabel('Magnitudes')
-plt.colorbar(label='Cluster Label')
-plt.savefig('DBSCAN-test-plot.png')
-########
-# Trying out Local Neighbors
-######### 
-
-# # Define Local Outlier Factor model
-# lof = LocalOutlierFactor()
-
-# # Fit the model to the data and predict outlier scores
-# # lower/negative outlier scores mean less relation, higher/positive scores mean closer relation (inlier)
-# outlier_scores = lof.fit_predict(data_aoas)
-
-# # Plot clustered data
-# fig = plt.subplots(subplot_kw=dict(projection="polar"))
-# plt.scatter(converted_aoas_angles, mags_sample, c=outlier_scores)
-# plt.title('Clustered Data, Outlier Detection (Local Outlier Factor)')
-# plt.xlabel('AoAs')
-# plt.ylabel('Magnitudes')
-# plt.colorbar(label='Outlier Score')
-# plt.savefig('LocalNeighbors-test-plot.png')
-
-# after identifying outliers, I can apply kMeans
