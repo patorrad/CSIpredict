@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+import random
 import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -38,7 +39,7 @@ ax.set_rmax(np.max(mags_1) + 1)
 
 # Add colorbar for reference - purple to yellow, purple is lower magnitude
 cbar = plt.colorbar(scatter, ax=ax, label='Magnitude Color Reference')
-plt.savefig('plot_mags_aoas/first10positions_ray0_fig_1.png')
+plt.savefig('cluster_plots/plot_mags_aoas/first10positions_ray0_fig_1.png')
 
 # Graph 2 - Plotting aoa for first 10 rays at position 0 with path loss as the magnitude
 mags_2 = mags_fromloss[:10, 0]
@@ -55,13 +56,14 @@ ax.set_rmax(np.max(mags_2) + 1)
 
 # Add colorbar for reference - purple to yellow, purple is lower magnitude
 cbar = plt.colorbar(scatter, ax=ax, label='Magnitude Color Reference')
-plt.savefig('plot_mags_aoas/first10rays_position0_fig_2.png')
+plt.savefig('cluster_plots/plot_mags_aoas/first10rays_position0_fig_2.png')
 
 # Graph 3 - Generate ONE straight path and plot the points on it - note that each position can have up
 #           to 100 rays but will likely be less. Each point represents the magnitude and aoa of a ray.
 
 num_points = 5 # number of points on path, indicates the different positions
 paths = d.generate_straight_paths(1, num_points)
+print(paths)
 #print("PATHS")
 #print(paths)
 
@@ -86,7 +88,7 @@ for n in range(num_points):
     # ax.set_rlim(1, n, np.min(mags_3), np.max(mags_3) + 1)
 # adding padding between graphs
 plt.subplots_adjust(wspace = 1)
-plt.savefig('plot_mags_aoas/straight_line_aoas+mags_per_point.png')
+plt.savefig('cluster_plots/plot_mags_aoas/straight_line_aoas+mags_per_point.png')
 
 # Graph 4 - Generate plot with points at each end
 mags_botleft = mags_fromloss[:,1]
@@ -118,7 +120,7 @@ cbar4 = plt.colorbar(scatter_botright, ax=ax, label='Bottom Right Magnitudes')
 
 plt.subplots_adjust(wspace = 1)
 
-plt.savefig('plot_mags_aoas/10_rays_at_each_corner_fig_4.png')
+plt.savefig('cluster_plots/plot_mags_aoas/10_rays_at_each_corner_fig_4.png')
 
 ##### Clustering #######
 def convert_negative_to_positive(angles):
@@ -139,8 +141,12 @@ def convert_negative_to_positive(angles):
 # mags_sample = np.trim_zeros(mags_3[0, 1, :].reshape(-1)) #mags_botleft #mags_3[0, 1, :].reshape(-1) # # #  # Reshape to (100,)
 # aoas_sample = np.trim_zeros(aoas_3[0, 1, :])#aoas_botleft #aoas_3[0, 1, :]# # # # Reshape to (100,)
 
-mags_sample = np.trim_zeros(mags_fromloss[:,7890]) # this is a point that seems to be in the bot right based on the ray angles
-aoas_sample = np.trim_zeros(np.deg2rad(aoas[:,0,7890]))
+r_pt = random.randint(0, 40400)
+print("rando")
+print(r_pt)
+
+mags_sample = np.trim_zeros(mags_fromloss[:,r_pt]) # this is a point that seems to be in the bot right based on the ray angles
+aoas_sample = np.trim_zeros(np.deg2rad(aoas[:,0,r_pt]))
 
 
 
@@ -188,7 +194,7 @@ def kmeans_cluster_aoas(data_aoas,converted_aoas_angles,mag_samples):
     plt.title('Clustered Data, only AoAs')
     plt.xlabel('AoA')
     plt.ylabel('Magnitude')
-    plt.savefig('kmeans-aoa-only.png')
+    plt.savefig('cluster_plots/kmeans-aoa-only.png')
 
     # Look at an elbow plot
     plt.figure(figsize=(10, 5))
@@ -196,7 +202,7 @@ def kmeans_cluster_aoas(data_aoas,converted_aoas_angles,mag_samples):
     plt.xlabel('Number of Clusters')
     plt.ylabel('Inertia')
     plt.grid(True)
-    plt.savefig('kmeans-test-elbow-plot-aoa.png')
+    plt.savefig('cluster_plots/kmeans-test-elbow-plot-aoa.png')
 
 
 
@@ -226,7 +232,7 @@ plt.title('Clustered Data, Outlier Clustering (Isolation Forest)')
 plt.xlabel('AoAs')
 plt.ylabel('Magnitudes')
 plt.colorbar(label='Cluster Label')
-plt.savefig('IsolationForest-test-plot.png')
+plt.savefig('cluster_plots/IsolationForest-test-plot.png')
 
 # kmeans_cluster_aoas(data_aoaos_inliers, aoas_inliers, mags_inliers)
 
@@ -235,23 +241,33 @@ plt.savefig('IsolationForest-test-plot.png')
 ######### 
 
 # # Perform clustering with DBSCAN on the wrapped angles
-dbscan_aoa = DBSCAN(eps=0.2, min_samples=5)
+dbscan_aoa = DBSCAN(eps=0.1, min_samples=3)
 aoa_cluster_labels = dbscan_aoa.fit_predict(data_aoaos_inliers) # if any of the aoa clusters are negative then they aren't part of a group
 
 # Plot clustered data
 aoaos_inliers = converted_aoas_angles[inlier_indicies]
 mags_inliers = mags_sample[inlier_indicies]
 fig = plt.subplots(subplot_kw=dict(projection="polar"))
-print(aoa_cluster_labels)
-print(np.where(aoa_cluster_labels < 0))
+# print(aoa_cluster_labels)
+# print(np.where(aoa_cluster_labels < 0))
 plt.scatter(aoaos_inliers, mags_inliers, c=aoa_cluster_labels)
 plt.title('Clustered Data, only AoAs (DBSCAN)')
 plt.xlabel('AoAs')
 plt.ylabel('Magnitudes')
 plt.colorbar(label='Cluster Label')
-plt.savefig('DBSCAN-test-plot.png')
+plt.savefig('cluster_plots/DBSCAN-test-plot.png')
 
-
+unique_labels = np.unique(aoa_cluster_labels)
+unique_labels = unique_labels[np.where(unique_labels >= 0)]
+cluster_averages = []
+for label in unique_labels:
+    print(label)
+    cluster = np.where(aoa_cluster_labels == label)
+    print(np.rad2deg(aoas_inliers[cluster]))
+    weighted_average = np.average(np.rad2deg(aoas_inliers[cluster]), weights=mags_inliers[cluster])
+    cluster_averages.append(weighted_average)
+    
+print(cluster_averages)
 
 ########
 # Trying out Local Neighbors
@@ -271,7 +287,7 @@ plt.savefig('DBSCAN-test-plot.png')
 # plt.xlabel('AoAs')
 # plt.ylabel('Magnitudes')
 # plt.colorbar(label='Outlier Score')
-# plt.savefig('LocalNeighbors-test-plot.png')
+# plt.savefig('cluster_plots/LocalNeighbors-test-plot.png')
 
 # after identifying outliers, I can apply kMeans
 
@@ -356,7 +372,7 @@ plt.savefig('DBSCAN-test-plot.png')
 # axs[2].set_title('Clustered Data, only AoAs')
 
 # plt.subplots_adjust(hspace = 0.4)
-# plt.savefig('kmeans-comparison.png')
+# plt.savefig('cluster_plots/kmeans-comparison.png')
 
 # # # look at an elbow plot
 # fig = plt.subplots(figsize=(10,5))
@@ -366,4 +382,4 @@ plt.savefig('DBSCAN-test-plot.png')
 # plt.xlabel('Number of Clusters')
 # plt.ylabel('Inertia')
 # plt.grid(True)
-# plt.savefig('kmeans-test-elbow-plot.png')
+# plt.savefig('cluster_plots/kmeans-test-elbow-plot.png')

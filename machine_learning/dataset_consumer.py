@@ -341,23 +341,26 @@ class DatasetConsumer:
     
     def aoas_avg(self, path_indices):
         """
-        Returns the weighted average of the aoa azimuth values
+        Returns the average of the aoa azimuth values 
         Shape: (num_paths, path_length_n, 1)
         """
         aoa_azimuths = self.paths_to_dataset_rays_aoas(path_indices)[0]  # returns a tuple (azimuths, elevations), so taking just azimuths
-        ray_mags = -1 * self.paths_to_dataset_path_loss_only(path_indices) # these values are in dbm (need to take the negative), in the raw path loss - the higher the value the lower the magnitude in dbm or watts
-        
+
         # Replace the 0 values with NaN to exclude it from the mean calculation
-        # aoa_azimuths_nan = np.where(aoa_azimuths == 0, np.nan, aoa_azimuths) 
-        # ray_mags_nan = np.where(ray_mags == 0, np.nan, ray_mags) 
+        aoa_azimuths_nan = np.where(aoa_azimuths == 0, np.nan, aoa_azimuths) 
 
         # Calculate the mean along axis 2 excluding the zeros (set to NaN)
-        # avg_aoa_azimuths = np.nanmean(aoa_azimuths_nan, axis=2, keepdims=True)
-        avg_aoa_azimuths = np.average(a=aoa_azimuths, axis=2, weights=ray_mags, keepdims=True)
+        avg_aoa_azimuths = np.nanmean(aoa_azimuths_nan, axis=2, keepdims=True)
+
         # Replace NaN values in aoa_azimuths with 0
-        # avg_aoa_azimuths = np.nan_to_num(avg_aoa_azimuths, nan=0.0)
+        avg_aoa_azimuths = np.nan_to_num(avg_aoa_azimuths, nan=0.0)
 
         return avg_aoa_azimuths 
+
+    ## Cluster the rays at the points and return an array of clustered points
+    ## Ex - [1,20,18,2,23,4] --> return [[1,2,4],[20,28,23]]
+    ## Need to add a clustered average for all of the points
+
 
     def paths_to_dataset_rays_aoas_trig(self, path_indices, pad = 0):
         """
@@ -473,9 +476,6 @@ class DatasetConsumer:
         # Add the positions to the end of the array
         concatenated = np.concatenate((interleaved, positions), axis=2)
         return concatenated
-    
-    
-
     
     # def paths_to_dataset_interleaved_padded(self, path_indices):
     #     """
@@ -629,10 +629,9 @@ d = DatasetConsumer(DATASET)
 # d.print_info()
 
 # # Start with curved paths
-# paths = d.generate_curved_paths(200, path_length_n=20)
+paths = d.generate_curved_paths(200, path_length_n=20)
 
-# paths = d.generate_straight_paths(1, path_length_n=5)
-paths = [[0]]
+paths = d.generate_straight_paths(1)
 # print(paths.shape)
 # print(paths)
 # mags = d.paths_to_dataset_mag_only(paths)
@@ -643,17 +642,7 @@ paths = [[0]]
 # print(num_rays)
 # print("######################")
 
-# aoa_ray_mag = d.paths_to_dataset_mag_rays_aoas(paths) # returns a tuple (azimuths, elevations)
-
-print(paths)
-print(np.where(d.ray_aoas[:,0,0] > 0))
-print(np.where(d.ray_path_losses[:,0] > 0))
-print(d.aoas_avg(paths))
-
-# print(num_paths[0][1])
-
-
-# print(d.paths_to_dataset_mag_only(paths).shape)
+aoa_ray_mag = d.paths_to_dataset_mag_rays_aoas(paths) # returns a tuple (azimuths, elevations)
 
 
 # # Create left, center, and right paths
