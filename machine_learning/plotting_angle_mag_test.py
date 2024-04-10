@@ -141,7 +141,7 @@ def convert_negative_to_positive(angles):
 # mags_sample = np.trim_zeros(mags_3[0, 1, :].reshape(-1)) #mags_botleft #mags_3[0, 1, :].reshape(-1) # # #  # Reshape to (100,)
 # aoas_sample = np.trim_zeros(aoas_3[0, 1, :])#aoas_botleft #aoas_3[0, 1, :]# # # # Reshape to (100,)
 
-r_pt = random.randint(0, 40400)
+r_pt = 0#random.randint(0, 40400)
 print("rando")
 print(r_pt)
 
