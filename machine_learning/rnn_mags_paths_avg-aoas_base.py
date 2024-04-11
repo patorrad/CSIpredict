@@ -29,7 +29,7 @@ for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransform
     TENSORBOARD = True
     SCALER = scaler_type
     SAVE_PATH = './machine_learning/models/model.pth'
-    NUM_PATHS = 1000
+    NUM_PATHS = 100
     PATH_LENGTH = 100
     NUM_PREDICTIONS = 20
     FREQ_BINS = 128
@@ -69,7 +69,7 @@ for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransform
     # Find paths
     d.csi_phases = d.unwrap(d.csi_phases)
     paths = d.generate_straight_paths(NUM_PATHS, PATH_LENGTH)
-    dataset_mag_rays_aoas = d.paths_to_dataset_mag_rays_aoas(paths) # will use the scaled mag data and attach the number of ray hits, scaled by 1/100
+    dataset_mag_rays_aoas = d.paths_to_dataset_mag_rays_aoas_base(paths) # will use the scaled mag data and attach the number of ray hits, scaled by 1/100
 
 
     # # Convert 'split_sequences' to a PyTorch tensor
@@ -115,7 +115,7 @@ for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransform
     }
     current = datetime.datetime.now()
     if TENSORBOARD:
-        writer = SummaryWriter(f"runs_withAOA/{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
+        writer = SummaryWriter(f"runs_aoas_100paths/{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
         writer.add_custom_scalars(layout)
 
     # Create a simple RNN model
