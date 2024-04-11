@@ -1,14 +1,3 @@
-####
-"""
-    The rnn_mags_paths_aoa_2.py
-    is intended to add in the angle of attacks in a new way. Initally, rnn_mags_paths_aoas.py used
-    aoas averaged (not that this is unweighted) at every position. 
-
-    Some new approaches I can try:
-    - weighted average for the ray aoas at each position based on the respective magnitudes given in dbm with the path loss
-    - angle and magnitude bins
-    
-"""
 import datetime
 import h5py
 import numpy as np
@@ -80,7 +69,7 @@ for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransform
     # Find paths
     d.csi_phases = d.unwrap(d.csi_phases)
     paths = d.generate_straight_paths(NUM_PATHS, PATH_LENGTH)
-    dataset_mag_rays_aoas = d.paths_to_dataset_mag_rays_aoas(paths) # will use the scaled mag data and attach the number of ray hits, scaled by 1/100
+    dataset_mag_rays_aoas = d.paths_to_dataset_mag_rays_weighted_aoas(paths) # will use the scaled mag data and attach the number of ray hits, scaled by 1/100
 
 
     # # Convert 'split_sequences' to a PyTorch tensor
@@ -126,7 +115,7 @@ for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransform
     }
     current = datetime.datetime.now()
     if TENSORBOARD:
-        writer = SummaryWriter(f"runs_with_MAGS_NUM_PATHS_AOA/{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
+        writer = SummaryWriter(f"runs_weighted_aoa_clusters/{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
         writer.add_custom_scalars(layout)
 
     # Create a simple RNN model

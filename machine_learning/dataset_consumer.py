@@ -361,102 +361,7 @@ class DatasetConsumer:
     ## Cluster the rays at the points and return an array of clustered points
     ## Ex - [1,20,18,2,23,4] --> return [[1,2,4],[20,28,23]]
     ## Need to add a clustered average for all of the points
-
     def weighted_aoa_average(self, path_indices):
-        """
-        Generate a torch dataset from the given path indices to contain
-        the mags, number of rays, and aoa average 
-        Shape: (num_paths, path_length_n, 128)
-        """
-        def convert_negative_to_positive(angles):
-            # Convert angles to degrees
-            angles_degrees = np.rad2deg(angles)
-            # Convert negative angles to positive within the range [0, 360)
-            converted_angles_degrees = np.where(angles_degrees < 0, 360 + angles_degrees, angles_degrees)
-            # Convert back to radians
-            converted_angles_radians = np.radians(converted_angles_degrees)
-            return converted_angles_radians
-        n_avgs_per_pt = 4
-        weighted_aoa_paths = []
-        i = 0 
-        for path in path_indices:
-            print(path)
-            i += 1
-            weighted_aoa_pt = np.empty((path_indices.shape[0],4))
-            for pt in path:
-                mags_sample = np.trim_zeros(mags_fromloss[:,pt])
-                aoas_sample = np.trim_zeros(np.deg2rad(aoas[:,0,pt]))
-
-                converted_aoas_angles = convert_negative_to_positive(aoas_sample)         # Wrap angles
-
-                # Reshape the wrapped angles
-                data_aoas = converted_aoas_angles.reshape(-1, 1)
-
-                ########
-                # Isolation Forest - Isolating the outlier points and getting the inliers
-                ######### 
-
-                # Define Isolation Forest model
-                isolation_forest = IsolationForest()
-
-                # Fit the model to the data
-                isolation_forest.fit(data_aoas)
-
-                # Predict outliers (-1) and inliers (1)
-                cluster_labels = isolation_forest.predict(data_aoas)
-
-                # Get inlier indicies 
-                inlier_indicies = np.where(cluster_labels == 1)
-
-                # Get the data values (mags and aoas) for the linear indicies
-                data_aoaos_inliers = data_aoas[inlier_indicies]
-                aoas_inliers = converted_aoas_angles[inlier_indicies]
-                mags_inliers = mags_sample[inlier_indicies]
-
-                ########
-                # Apply the DBSCAN clustering to the dataset with outliers removed
-                ########
-                # Perform clustering with DBSCAN on the "wrapped" angles, from 0 to 360 degrees
-                dbscan_aoa = DBSCAN(eps=0.1, min_samples=3)
-                aoa_cluster_labels = dbscan_aoa.fit_predict(data_aoaos_inliers) # if any of the aoa clusters are negative then they aren't part of a group
-
-                # Get each of the clusters, note that negative labels are outliers and should be removed
-                unique_labels = np.unique(aoa_cluster_labels)
-                unique_labels = unique_labels[np.where(unique_labels >= 0)]
-                cluster_averages = []
-                
-                # Graphing the points:
-                # Plot clustered data
-                aoaos_inliers = converted_aoas_angles[inlier_indicies]
-                mags_inliers = mags_sample[inlier_indicies]
-                fig = plt.subplots(subplot_kw=dict(projection="polar"))
-                # print(aoa_cluster_labels)
-                # print(np.where(aoa_cluster_labels < 0))
-                plt.scatter(aoaos_inliers, mags_inliers, c=aoa_cluster_labels)
-                plt.title('Clustered Data, only AoAs (DBSCAN)')
-                plt.xlabel('AoAs')
-                plt.ylabel('Magnitudes')
-                plt.colorbar(label='Cluster Label')
-                plt.savefig('cluster_plots/on_paths/test-plot+point{}+path{}.png'.format(pt, i))
-                print(i)
-
-                # find the weighted average of each of the clusters and append to cluster_averages
-                for label in unique_labels:
-                    cluster = np.where(aoa_cluster_labels == label)
-                    weighted_average = np.average(np.rad2deg(aoas_inliers[cluster]), weights=mags_inliers[cluster])
-                    cluster_averages.append(weighted_average)
-                cluster_averages = np.array(cluster_averages)
-                
-                padding_needed = n_avgs_per_pt - len(weighted_aoa_pt)
-                # Add padding of zeros to the array
-                padded_weighted_aoa_pt= np.pad(cluster_averages, (0, padding_needed), mode='constant')
-                # print(cluster_averages)s
-                np.concatenate(weighted_aoa_pt, cluster_averages)
-            np.concatenated(weighted_aoa_paths,weighted_aoa_pt)
-        print(weighted_aoa_paths)
-        return (weighted_aoa_paths)
-
-    def weighted_aoa_averages(self, path_indices):
         """
         Generate a torch dataset from the given path indices to contain
         the mags, number of rays, and aoa average 
@@ -522,17 +427,17 @@ class DatasetConsumer:
 
                 # Graphing the points:
                 # Plot clustered data
-                aoaos_inliers = converted_aoas_angles[inlier_indices]
-                mags_inliers = mags_sample[inlier_indices]
-                fig = plt.subplots(subplot_kw=dict(projection="polar"))
-                # print(aoa_cluster_labels)
-                # print(np.where(aoa_cluster_labels < 0))
-                plt.scatter(aoaos_inliers, mags_inliers, c=aoa_cluster_labels)
-                plt.title('Clustered Data, only AoAs (DBSCAN)')
-                plt.xlabel('AoAs')
-                plt.ylabel('Magnitudes')
-                plt.colorbar(label='Cluster Label')
-                plt.savefig('cluster_plots/on_paths/test-plot+point{}+path{}.png'.format(pt, temp_num_paths))
+                # aoaos_inliers = converted_aoas_angles[inlier_indices]
+                # mags_inliers = mags_sample[inlier_indices]
+                # fig = plt.subplots(subplot_kw=dict(projection="polar"))
+                # # print(aoa_cluster_labels)
+                # # print(np.where(aoa_cluster_labels < 0))
+                # plt.scatter(aoaos_inliers, mags_inliers, c=aoa_cluster_labels)
+                # plt.title('Clustered Data, only AoAs (DBSCAN)')
+                # plt.xlabel('AoAs')
+                # plt.ylabel('Magnitudes')
+                # plt.colorbar(label='Cluster Label')
+                # plt.savefig('cluster_plots/on_paths/test-plot+point{}+path{}.png'.format(pt, temp_num_paths))
 
                 # find the weighted average of each of the clusters and append to cluster_averages
                 for label in unique_labels:
@@ -556,7 +461,7 @@ class DatasetConsumer:
         # Convert the weighted averages of the angle clusters of each path to numpy array
         weighted_aoa_paths = np.array(weighted_aoa_paths)
 
-        print(weighted_aoa_paths)
+        # print(weighted_aoa_paths)
         return weighted_aoa_paths
 
     def paths_to_dataset_rays_aoas_trig(self, path_indices, pad = 0):
@@ -580,7 +485,7 @@ class DatasetConsumer:
         print(np.array([azimuth_cos[path_indices, :], azimuth_sin[path_indices, :], elevation_cos[path_indices, :], elevation_sin[path_indices, :]]).shape)
         return np.array([azimuth_cos[path_indices, :], azimuth_sin[path_indices, :], elevation_cos[path_indices, :], elevation_sin[path_indices, :]])
     
-    def paths_to_dataset_mag_rays_aoas(self, path_indices,scale=True):
+    def paths_to_dataset_mag_rays_aoas_base(self, path_indices,scale=True):
         """
         Generate a torch dataset from the given path indices to contain
         the mags, number of rays, and aoa average 
@@ -603,6 +508,31 @@ class DatasetConsumer:
         print(csi_mags_num_aoas.shape)
 
         return csi_mags_num_aoas   
+    
+    def paths_to_dataset_mag_rays_weighted_aoas(self, path_indices,scale=True):
+        """
+        Generate a torch dataset from the given path indices to contain
+        the mags, number of rays, and aoa average 
+        Shape: (num_paths, path_length_n, 128)
+        """
+        # Use the indices to grab the CSI data for each point
+        csi_mags = self.csi_mags[:, path_indices]
+        csi_mags = np.swapaxes(csi_mags, 0, 1)
+        csi_mags = np.swapaxes(csi_mags, 1, 2)
+        
+        num_rays = self.get_num_rays(path_indices)
+        if(scale):
+            num_rays = num_rays / 100
+
+        avg_aoa_azimuths = d.weighted_aoa_average(path_indices) # we are changing the function for the aoa values here compared to the base case
+        # add the number of paths for each position on the path and add the average number of attacks at that position
+        # to the end of the magnitude channels so the dimension becomes (num_paths,points, 130)
+        csi_mags_num_aoas = np.concatenate((csi_mags, num_rays, avg_aoa_azimuths), axis=-1)
+
+        print(csi_mags_num_aoas.shape)
+
+        return csi_mags_num_aoas   
+    
     
     def paths_to_dataset_positions(self, path_indices):
         """
@@ -823,18 +753,17 @@ class DatasetConsumer:
     
 DATASET = './machine_learning/data/dataset_0_5m_spacing.h5'
 d = DatasetConsumer(DATASET)
-# d.print_info()
+# # d.print_info()
 
-# # Start with curved paths
-paths = d.generate_straight_paths(2, path_length_n=5)
+# # # Start with curved paths
+# paths = d.generate_straight_paths(10, path_length_n=10)
 
-# paths = d.generate_straight_paths(1)
-
+# # paths = d.generate_straight_paths(1)
 aoas = d.ray_aoas
 mags_fromloss = d.ray_path_losses
 
 # print(d.weighted_aoa_average(paths).shape)
-d.weighted_aoa_averages(paths)
+# d.paths_to_dataset_mag_rays_weighted_aoas(paths)
 
 # print(paths.shape[1])
 # print(paths.shape)
