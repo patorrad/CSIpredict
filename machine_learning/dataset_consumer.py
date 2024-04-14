@@ -8,6 +8,7 @@ from typing import Callable
 from cprint import *
 from sklearn.cluster import DBSCAN
 from sklearn.ensemble import IsolationForest
+from cluster_aoas import AoAClusteredDataset
 
 def breesenham(x0, y0, x1, y1):
     """
@@ -98,6 +99,7 @@ class DatasetConsumer:
 
         self.tx_position = self.attributes['tx_position']
         self.grid_size, self.grid_spacing = self.__find_grid(self.rx_positions)
+        self.aoa_weighted_dataset = AoAClusteredDataset(range(54), dataset_path)
 
     def __find_grid(self, rx_positions):
         # Find the grid size and spacing that was used to generate the dataset
@@ -376,7 +378,7 @@ class DatasetConsumer:
             converted_angles_radians = np.radians(converted_angles_degrees)
             return converted_angles_radians
         
-        n_avgs_per_pt = 4 # highest number of clusters to introduce padding
+        n_avgs_per_pt = 10 # highest number of clusters to introduce padding
         weighted_aoa_paths = []
         
         temp_num_paths = 0
@@ -394,63 +396,67 @@ class DatasetConsumer:
 
                 ########
                 # Isolation Forest - Isolating the outlier points and getting the inliers
-                #########
-
-                # Define Isolation Forest model
-                isolation_forest = IsolationForest()
-
-                # Fit the model to the data
-                isolation_forest.fit(data_aoas)
-
-                # Predict outliers (-1) and inliers (1)
-                cluster_labels = isolation_forest.predict(data_aoas)
-
-                # Get inlier indices 
-                inlier_indices = np.where(cluster_labels == 1)
-
-                # Get the data values (mags and aoas) for the linear indices
-                data_aoas_inliers = data_aoas[inlier_indices]
-                aoas_inliers = converted_aoas_angles[inlier_indices]
-                mags_inliers = mags_sample[inlier_indices]
-
                 ########
-                # Apply the DBSCAN clustering to the dataset with outliers removed
-                ########
-                # Perform clustering with DBSCAN on the "wrapped" angles, from 0 to 360 degrees
-                dbscan_aoa = DBSCAN(eps=0.1, min_samples=3)
-                aoa_cluster_labels = dbscan_aoa.fit_predict(data_aoas_inliers)  # if any of the aoa clusters are negative then they aren't part of a group
+                if(data_aoas.size > 0):
+                    # Define Isolation Forest model
+                    isolation_forest = IsolationForest()
 
-                # Get each of the clusters, note that negative labels are outliers and should be removed
-                unique_labels = np.unique(aoa_cluster_labels)
-                unique_labels = unique_labels[np.where(unique_labels >= 0)]
-                cluster_averages = []
+                    # Fit the model to the data
+                    isolation_forest.fit(data_aoas)
 
-                # Graphing the points:
-                # Plot clustered data
-                # aoaos_inliers = converted_aoas_angles[inlier_indices]
-                # mags_inliers = mags_sample[inlier_indices]
-                # fig = plt.subplots(subplot_kw=dict(projection="polar"))
-                # # print(aoa_cluster_labels)
-                # # print(np.where(aoa_cluster_labels < 0))
-                # plt.scatter(aoaos_inliers, mags_inliers, c=aoa_cluster_labels)
-                # plt.title('Clustered Data, only AoAs (DBSCAN)')
-                # plt.xlabel('AoAs')
-                # plt.ylabel('Magnitudes')
-                # plt.colorbar(label='Cluster Label')
-                # plt.savefig('cluster_plots/on_paths/test-plot+point{}+path{}.png'.format(pt, temp_num_paths))
+                    # Predict outliers (-1) and inliers (1)
+                    cluster_labels = isolation_forest.predict(data_aoas)
 
-                # find the weighted average of each of the clusters and append to cluster_averages
-                for label in unique_labels:
-                    cluster = np.where(aoa_cluster_labels == label)
-                    weighted_average = np.average(np.rad2deg(aoas_inliers[cluster]), weights=mags_inliers[cluster])
-                    cluster_averages.append(weighted_average)
-                    
-                # Convert cluster_averages to a numpy array
-                cluster_averages = np.array(cluster_averages)
+                    # Get inlier indices 
+                    inlier_indices = np.where(cluster_labels == 1)
 
-                # Adding padding to ensure each cluster of averages has 4 elements,
-                padding_needed = n_avgs_per_pt - len(cluster_averages)
-                padded_cluster_averages = np.pad(cluster_averages, (0, padding_needed), mode='constant') # Adding zero to the extra values
+                    # Get the data values (mags and aoas) for the linear indices
+                    data_aoas_inliers = data_aoas[inlier_indices]
+                    aoas_inliers = converted_aoas_angles[inlier_indices]
+                    mags_inliers = mags_sample[inlier_indices]
+
+                    ########
+                    # Apply the DBSCAN clustering to the dataset with outliers removed
+                    ########
+                    if(data_aoas_inliers.size > 0):
+                        # Perform clustering with DBSCAN on the "wrapped" angles, from 0 to 360 degrees
+                        dbscan_aoa = DBSCAN(eps=0.1, min_samples=3)
+                        aoa_cluster_labels = dbscan_aoa.fit_predict(data_aoas_inliers)  # if any of the aoa clusters are negative then they aren't part of a group
+
+                        # Get each of the clusters, note that negative labels are outliers and should be removed
+                        unique_labels = np.unique(aoa_cluster_labels)
+                        unique_labels = unique_labels[np.where(unique_labels >= 0)]
+                        cluster_averages = []
+
+                        # Graphing the points:
+                        # Plot clustered data
+                        # aoaos_inliers = converted_aoas_angles[inlier_indices]
+                        # mags_inliers = mags_sample[inlier_indices]
+                        # fig = plt.subplots(subplot_kw=dict(projection="polar"))
+                        # # print(aoa_cluster_labels)
+                        # # print(np.where(aoa_cluster_labels < 0))
+                        # plt.scatter(aoaos_inliers, mags_inliers, c=aoa_cluster_labels)
+                        # plt.title('Clustered Data, only AoAs (DBSCAN)')
+                        # plt.xlabel('AoAs')
+                        # plt.ylabel('Magnitudes')
+                        # plt.colorbar(label='Cluster Label')
+                        # plt.savefig('cluster_plots/on_paths/test-plot+point{}+path{}.png'.format(pt, temp_num_paths))
+
+                        # find the weighted average of each of the clusters and append to cluster_averages
+                        for label in unique_labels:
+                            cluster = np.where(aoa_cluster_labels == label)
+                            weighted_average = np.average(np.rad2deg(aoas_inliers[cluster]), weights=mags_inliers[cluster])
+                            cluster_averages.append(weighted_average)
+                            
+                        # Convert cluster_averages to a numpy array
+                        cluster_averages = np.array(cluster_averages)
+                        # Adding padding to ensure each cluster of averages has 4 elements,
+                        padding_needed = n_avgs_per_pt - len(cluster_averages)
+                        print("path %d", temp_num_paths)
+                        print("avg per pt", n_avgs_per_pt)
+                        print("clusters", len(cluster_averages))
+                        print(padding_needed)
+                        padded_cluster_averages = np.pad(cluster_averages, (0, padding_needed), mode='constant') # Adding zero to the extra values
                 
                 # Append padded cluster averages to the weighted_aoa_pt array
                 weighted_aoa_pt = np.vstack((weighted_aoa_pt, padded_cluster_averages))
@@ -461,7 +467,6 @@ class DatasetConsumer:
         # Convert the weighted averages of the angle clusters of each path to numpy array
         weighted_aoa_paths = np.array(weighted_aoa_paths)
 
-        # print(weighted_aoa_paths)
         return weighted_aoa_paths
 
     def paths_to_dataset_rays_aoas_trig(self, path_indices, pad = 0):
@@ -524,7 +529,10 @@ class DatasetConsumer:
         if(scale):
             num_rays = num_rays / 100
 
-        avg_aoa_azimuths = d.weighted_aoa_average(path_indices) # we are changing the function for the aoa values here compared to the base case
+        
+        # avg_aoa_azimuths = d.weighted_aoa_average(path_indices) # we are changing the function for the aoa values here compared to the base case
+        avg_aoa_azimuths = self.aoa_weighted_dataset.__getitem__(path_indices)# Using the pre-clustered dataset
+        print(avg_aoa_azimuths)
         # add the number of paths for each position on the path and add the average number of attacks at that position
         # to the end of the magnitude channels so the dimension becomes (num_paths,points, 130)
         csi_mags_num_aoas = np.concatenate((csi_mags, num_rays, avg_aoa_azimuths), axis=-1)
@@ -751,20 +759,22 @@ class DatasetConsumer:
 
         return (left_paths, center_paths, right_paths)
     
+
 DATASET = './machine_learning/data/dataset_0_5m_spacing.h5'
 d = DatasetConsumer(DATASET)
 # # d.print_info()
 
 # # # Start with curved paths
-# paths = d.generate_straight_paths(10, path_length_n=10)
+# paths = d.generate_straight_paths(2, path_length_n=5)
+# print(paths)
+# paths = d.generate_straight_paths(1)
+paths = [[50, 45,45],[51, 30,45]]
+print(paths)
 
-# # paths = d.generate_straight_paths(1)
-aoas = d.ray_aoas
-mags_fromloss = d.ray_path_losses
 
 # print(d.weighted_aoa_average(paths).shape)
-# d.paths_to_dataset_mag_rays_weighted_aoas(paths)
-
+d.paths_to_dataset_mag_rays_weighted_aoas(paths).shape
+# d.weighted_aoa_average(paths)
 # print(paths.shape[1])
 # print(paths.shape)
 # print(paths)
