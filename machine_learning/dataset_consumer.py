@@ -8,7 +8,7 @@ from typing import Callable
 from cprint import *
 from sklearn.cluster import DBSCAN
 from sklearn.ensemble import IsolationForest
-from cluster_aoas import AoAClusteredDataset
+# from cluster_aoas import AoAClusteredDataset
 
 def breesenham(x0, y0, x1, y1):
     """
@@ -96,10 +96,14 @@ class DatasetConsumer:
             self.rx_positions = file['positions'][:]
             self.ray_aoas = file['ray_aoas'][:]
             self.ray_path_losses = file['ray_path_losses'][:]
+        
+        with h5py.File('./machine_learning/data/aoa_clusters_data.h5') as aoa_file:
+            self.aoa_weighted_clusters = aoa_file['aoa_weighted_clusters'][:]
 
+        print(self.aoa_weighted_clusters[0])
         self.tx_position = self.attributes['tx_position']
         self.grid_size, self.grid_spacing = self.__find_grid(self.rx_positions)
-        self.aoa_weighted_dataset = AoAClusteredDataset(range(54), dataset_path)
+        # self.aoa_weighted_dataset = AoAClusteredDataset(range(1000), dataset_path)
 
     def __find_grid(self, rx_positions):
         # Find the grid size and spacing that was used to generate the dataset
@@ -529,15 +533,16 @@ class DatasetConsumer:
         if(scale):
             num_rays = num_rays / 100
 
-        
+        avg_aoa_azimuths = self.aoa_weighted_clusters[path_indices] # we are changing the function for the aoa values here compared to the base case
+        # print("aoas!!!!", avg_aoa_azimuths)
         # avg_aoa_azimuths = d.weighted_aoa_average(path_indices) # we are changing the function for the aoa values here compared to the base case
-        avg_aoa_azimuths = self.aoa_weighted_dataset.__getitem__(path_indices)# Using the pre-clustered dataset
-        print(avg_aoa_azimuths)
+        # avg_aoa_azimuths = self.aoa_weighted_dataset.__getitem__(path_indices)# Using the pre-clustered dataset
+        # print(avg_aoa_azimuths)
         # add the number of paths for each position on the path and add the average number of attacks at that position
         # to the end of the magnitude channels so the dimension becomes (num_paths,points, 130)
         csi_mags_num_aoas = np.concatenate((csi_mags, num_rays, avg_aoa_azimuths), axis=-1)
 
-        print(csi_mags_num_aoas.shape)
+        # print(csi_mags_num_aoas.shape)
 
         return csi_mags_num_aoas   
     
@@ -768,12 +773,12 @@ d = DatasetConsumer(DATASET)
 # paths = d.generate_straight_paths(2, path_length_n=5)
 # print(paths)
 # paths = d.generate_straight_paths(1)
-paths = [[50, 45,45],[51, 30,45]]
-print(paths)
+# paths = [[50, 45,45],[51, 30,45]]
+# print(paths)
 
 
 # print(d.weighted_aoa_average(paths).shape)
-d.paths_to_dataset_mag_rays_weighted_aoas(paths).shape
+# d.paths_to_dataset_mag_rays_weighted_aoas(paths).shape
 # d.weighted_aoa_average(paths)
 # print(paths.shape[1])
 # print(paths.shape)

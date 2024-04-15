@@ -4,12 +4,14 @@ import json
 import matplotlib.pyplot as plt
 import sys
 import os
+import time
 from typing import Callable
 from cprint import *
 from sklearn.cluster import DBSCAN
 from sklearn.ensemble import IsolationForest
 # from dataset_consumer import DatasetConsumer
 from torch.utils.data import Dataset, DataLoader
+
 
 DATASET = './machine_learning/data/dataset_0_5m_spacing.h5'
 # # # d.print_info()
@@ -67,9 +69,12 @@ class AoAClusteredDataset(Dataset):
 
         self.path_indices = path_indices
         print("Setting up dataset of aoa clusters averaged with weights of magnitudes...")
+        start_time=time.time()
         self.aoas = self.ray_aoas
         self.mags_fromloss = self.ray_path_losses
         self.weighted_aoa_pts = self.weighted_aoa_set(self.path_indices)
+        end_time=time.time()
+        print("time (s):",end_time-start_time)
         print("Complete.")
 
     def __len__(self):
@@ -186,14 +191,19 @@ class AoAClusteredDataset(Dataset):
         return weighted_aoa_pts
 
 # Generate path indices from 0 to 40400
-# path_indices = range(52)
-# custom_dataset = AoAClusteredDataset(path_indices, DATASET)
+path_indices = range(100)
+aoa_weighted_clusters_dataset = AoAClusteredDataset(path_indices, DATASET) 
+aoa_weighted_clusters = aoa_weighted_clusters_dataset.__getitem__(path_indices)
+# print(aoa_weighted_clusters)
+hf = h5py.File('./machine_learning/data/aoa_clusters_data.h5', 'w')
+hf.create_dataset('aoa_weighted_clusters', data=aoa_weighted_clusters_dataset)
+hf.close()
 
 # # paths = d.generate_straight_paths(2,2)
 # paths = [[50, 45],[51, 30]]
 # print(paths)
 # # Create an instance of CustomDataset
-# # print(custom_dataset.__getitem__(22))
+# print(custom_dataset.__getitem__(2))
 # print(custom_dataset.__getitem__(paths))
 # Create a DataLoader instance
 # train_dataloader = DataLoader(custom_dataset, batch_size=32, shuffle=True)
