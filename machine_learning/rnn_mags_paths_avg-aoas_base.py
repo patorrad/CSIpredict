@@ -24,7 +24,7 @@ from utils import watts_to_dbm, get_scaler, dbm_to_watts
 
 
 # for hidden_size in [8, 16, 32, 64, 128]:
-for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransformer-uniform']: #, 'yeo-johnson',]:
+for scaler_type in ['quantiletransformer-gaussian', 'quantiletransformer-uniform', 'minmax']: #, 'yeo-johnson',]:
     DEBUG = True
     TENSORBOARD = True
     SCALER = scaler_type
@@ -115,7 +115,7 @@ for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransform
     }
     current = datetime.datetime.now()
     if TENSORBOARD:
-        writer = SummaryWriter(f"runs_aoas_25000_paths/avg{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
+        writer = SummaryWriter(f"runs_aoas_25000_paths/avg_base{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
         writer.add_custom_scalars(layout)
 
     # Create a simple RNN model
