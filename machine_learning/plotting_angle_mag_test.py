@@ -141,7 +141,7 @@ def convert_negative_to_positive(angles):
 # mags_sample = np.trim_zeros(mags_3[0, 1, :].reshape(-1)) #mags_botleft #mags_3[0, 1, :].reshape(-1) # # #  # Reshape to (100,)
 # aoas_sample = np.trim_zeros(aoas_3[0, 1, :])#aoas_botleft #aoas_3[0, 1, :]# # # # Reshape to (100,)
 
-r_pt = 0#random.randint(0, 40400)
+r_pt = 7660#random.randint(0, 40400) #21990, 25663,
 print("rando")
 print(r_pt)
 
@@ -265,6 +265,8 @@ for label in unique_labels:
     cluster = np.where(aoa_cluster_labels == label)
     print(np.rad2deg(aoas_inliers[cluster]))
     weighted_average = np.average(np.rad2deg(aoas_inliers[cluster]), weights=mags_inliers[cluster])
+
+    # weighted_average = np.average(mags_inliers[cluster], weights = np.rad2deg(aoas_inliers[cluster]))
     cluster_averages.append(weighted_average)
     
 print(cluster_averages)

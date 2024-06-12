@@ -24,7 +24,7 @@ from utils import watts_to_dbm, get_scaler, dbm_to_watts
 
 
 # for hidden_size in [8, 16, 32, 64, 128]:
-for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransformer-uniform']: #, 'yeo-johnson',]:
+for scaler_type in ['quantiletransformer-gaussian']: #, 'minmax', 'quantiletransformer-uniform']: #, 'yeo-johnson',]:
     DEBUG = True
     TENSORBOARD = True
     SCALER = scaler_type
@@ -115,7 +115,7 @@ for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransform
     }
     current = datetime.datetime.now()
     if TENSORBOARD:
-        writer = SummaryWriter(f"runs_aoas_25000_paths/mags_rays_only{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
+        writer = SummaryWriter(f"runs_featureSelectionTests_25000Paths_updatedloss/mags_rays_only_{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
         writer.add_custom_scalars(layout)
 
     # Create a simple RNN model
@@ -154,6 +154,8 @@ for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransform
             running_train_loss += loss.item()
             if TENSORBOARD: writer.add_scalar("losses/running_train_loss", loss.item(), i)
             i += 1
+        ## Adding this line to track epoch
+        if TENSORBOARD: writer.add_scalar("losses/train_loss", loss.item(), epoch)
 
         model.eval()
         with torch.no_grad():
@@ -178,7 +180,8 @@ for scaler_type in ['minmax', 'quantiletransformer-gaussian', 'quantiletransform
                     writer.add_scalar("accuracy_val/rmse", result_metrics['rmse'], j)
                     writer.add_scalar("accuracy_val/r2", result_metrics['r2'], j)
                 j += 1
-
+            ## Adding this line to track epoch
+            if TENSORBOARD: writer.add_scalar("losses/val_loss", val_loss.item(), epoch)
 
         if epoch % 100 == 99:
             print(f'[{epoch + 1}, {num_epochs}] loss: {running_train_loss:.3f}')

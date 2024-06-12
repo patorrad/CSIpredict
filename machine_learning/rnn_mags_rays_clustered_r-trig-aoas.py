@@ -38,7 +38,7 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     # Hyperparameters
     batch_size = 10000
     shuffle = True
-    input_size = 150 # FREQUENCY + NUM HITS
+    input_size = 151 # FREQUENCY + NUM HITS
     hidden_size = 64
     num_layers = 5
     output_size = 128
@@ -69,7 +69,7 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     # Find paths
     d.csi_phases = d.unwrap(d.csi_phases)
     paths = d.generate_straight_paths(NUM_PATHS, PATH_LENGTH)
-    dataset_mag_rays_aoas = d.paths_to_dataset_mag_weighted_aoas_r_trig(paths) # will use the scaled mag data and attach the number of ray hits, scaled by 1/100
+    dataset_mag_rays_aoas = d.paths_to_dataset_mag_rays_weighted_aoas_r_trig(paths) # will use the scaled mag data and attach the number of ray hits, scaled by 1/100
 
 
     # # Convert 'split_sequences' to a PyTorch tensor
@@ -115,7 +115,7 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     }
     current = datetime.datetime.now()
     if TENSORBOARD:
-        writer = SummaryWriter(f"runs_featureSelectionTests_25000Paths_updatedloss/r_trig_aoas_{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
+        writer = SummaryWriter(f"runs_featureSelectionTests_25000Paths_updatedloss/numrays_rtrig_aoas_{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
         writer.add_custom_scalars(layout)
 
     # Create a simple RNN model
@@ -125,10 +125,9 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Learning rate adjustment 
-    # Reduces learning rate by a factor of 0.5 after 2 epochs of no improvement
+    # Learning rate adjustment
     # decay_lr_lambda = lambda epoch: 0.2 if optimizer.param_groups[0]['lr'] < 0.0001 else 0.915 ** (epoch // 5)
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=decay_lr_lambda
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=decay_lr_lambda)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
 
     # Training loop
@@ -146,7 +145,6 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
             print(targets.shape)
             print("Seq: ")
             print(sequences.shape)
-            
             targets = targets[:,:,:128]
             print(targets.shape)
             outputs = model(sequences.float())
@@ -169,7 +167,6 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
                 targets = targets[:,:,:128] # removing last row of ray hits for target values
                 outputs = model(sequences.float())
                 val_loss = criterion(outputs, targets.float())
-                # No backward propagation for validation, this is just testing the model not adjusting
                 running_val_loss += val_loss.item()
                 if TENSORBOARD: writer.add_scalar("losses/running_val_loss", val_loss.item(), j)
 
@@ -188,6 +185,7 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
                 j += 1
             ## Adding this line to track epoch
             if TENSORBOARD: writer.add_scalar("losses/val_loss", val_loss.item(), epoch)
+
 
         if epoch % 100 == 99:
             print(f'[{epoch + 1}, {num_epochs}] loss: {running_train_loss:.3f}')

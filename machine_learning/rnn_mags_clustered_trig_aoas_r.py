@@ -38,7 +38,7 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     # Hyperparameters
     batch_size = 10000
     shuffle = True
-    input_size = *********** # FREQUENCY + NUM HITS
+    input_size = 161  # THIS DOESN'T SEEM CORRECT, should it not be 131 because 128 + 3 new sets (cos, sin, r)
     hidden_size = 64
     num_layers = 5
     output_size = 128
@@ -115,7 +115,7 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     }
     current = datetime.datetime.now()
     if TENSORBOARD:
-        writer = SummaryWriter(f"runs_aoas_25000_paths/r_trig_aoas_{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
+        writer = SummaryWriter(f"runs_aoas_25000_paths/trig_aoas_r_{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
         writer.add_custom_scalars(layout)
 
     # Create a simple RNN model
