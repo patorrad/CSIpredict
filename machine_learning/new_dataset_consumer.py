@@ -1,3 +1,7 @@
+"""
+Contains functions for curved path implementations. Currently using
+dataset_consumer.py for all implementations. 
+"""
 import h5py
 import numpy as np
 import json
