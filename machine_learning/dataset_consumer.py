@@ -513,7 +513,7 @@ class DatasetConsumer:
         
         num_rays = self.get_num_rays(path_indices)
         if(scale):
-            num_rays = num_rays / 100
+            num_rays = num_rays / 100           # Makes the number of rays between 0 to 1
 
         avg_aoa_azimuths = d.aoas_avg(path_indices)
         # add the number of paths for each position on the path and add the average number of attacks at that position
@@ -572,7 +572,35 @@ class DatasetConsumer:
         # to the end of the magnitude channels so the dimension becomes (num_paths,points, 150)
         csi_mags_rcos_rsin = np.concatenate((csi_mags, rcos, rsin), axis=-1)
         return csi_mags_rcos_rsin
+    def paths_to_dataset_mag_rays_weighted_aoas_r_trig(self, path_indices,scale=True):
+        """
+        Generate a torch dataset from the given path indices to contain
+        the mags, rcos and rsin. r is the corresponding magnitude of that cluster. 
+        Shape: (num_paths, path_length_n, 150)
+        """
+        # Use the indices to grab the CSI data for each point
+        csi_mags = self.csi_mags[:, path_indices]
+        csi_mags = np.swapaxes(csi_mags, 0, 1)
+        csi_mags = np.swapaxes(csi_mags, 1, 2)
+        print("csi_mags, ", csi_mags.shape)
+
+        avg_aoa_azimuths = self.aoa_weighted_clusters[path_indices] # retrieving average angle of attack azimuths from a pre-clustered dataset
+        avg_mags =  self.average_magnitude_clusters[path_indices]   # retrieving average magnitudes from a pre-clustered dataset
         
+        num_rays = self.get_num_rays(path_indices)
+        if(scale):
+            num_rays = num_rays / 100       # Makes the number of rays between 0 to 1
+
+        azimuth_cos = np.cos(avg_aoa_azimuths * 2 * np.pi / 360)
+        azimuth_sin = np.sin(avg_aoa_azimuths * 2 * np.pi / 360)
+
+        rcos = np.array(avg_mags) * np.array(azimuth_cos)
+        rsin = np.array(avg_mags) * np.array(azimuth_sin)
+            # add the number of paths for each position on the path and add the average number of attacks at that position
+        # to the end of the magnitude channels so the dimension becomes (num_paths,points, 150)
+        csi_mags_numrays_rcos_rsin = np.concatenate((csi_mags, num_rays, rcos, rsin), axis=-1)
+        return csi_mags_numrays_rcos_rsin
+      
     def paths_to_dataset_mag_weighted_aoas_trig(self, path_indices,scale=True):
         """
         Generate a torch dataset from the given path indices to contain
@@ -847,7 +875,9 @@ d = DatasetConsumer(DATASET)
 # # # Start with curved paths
 paths = d.generate_straight_paths(2, path_length_n=5)
 # d.paths_to_dataset_rays_aoas_trig(paths)
-# d.paths_to_dataset_mag_weighted_aoas_r_trig(paths)
+# print("SHAPE")
+# print(d.paths_to_dataset_mag_rays_weighted_aoas_r_trig(paths).shape)
+
 # print(paths)
 # paths = d.generate_straight_paths(1)
 # paths = [[50, 45,45],[51, 30,45]]
