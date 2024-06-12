@@ -38,7 +38,7 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     # Hyperparameters
     batch_size = 10000
     shuffle = True
-    input_size = 161  # THIS DOESN'T SEEM CORRECT, should it not be 131 because 128 + 3 new sets (cos, sin, r)
+    input_size = 161  # This is the correct input size but may need to be checked. Should it be 131 because 128 + 3 new sets (cos, sin, r)?
     hidden_size = 64
     num_layers = 5
     output_size = 128

@@ -96,21 +96,19 @@ class DatasetConsumer:
             self.rx_positions = file['positions'][:]
             self.ray_aoas = file['ray_aoas'][:]
             self.ray_path_losses = file['ray_path_losses'][:]
-        
-        # with h5py.File('./machine_learning/data/aoa_clusters_data.h5') as aoa_file:
-        #     self.aoa_weighted_clusters = aoa_file['aoa_weighted_clusters'][:]
-        
+
+        # Make sure to add the file to the correct path!
         with h5py.File('./machine_learning/data/average_aoa_and_mags_cluster_data.h5') as aoa_mag_clusters_file:
-            self.aoa_weighted_clusters = aoa_mag_clusters_file['aoa_weighted_clusters'][:]
-            self.average_magnitude_clusters = aoa_mag_clusters_file['average_magnitude_clusters'][:]
+            self.aoa_weighted_clusters = aoa_mag_clusters_file['aoa_weighted_clusters'][:] # average angle of cluster
+            self.average_magnitude_clusters = aoa_mag_clusters_file['average_magnitude_clusters'][:] # average magnitude of cluster
 
         self.tx_position = self.attributes['tx_position']
         self.grid_size, self.grid_spacing = self.__find_grid(self.rx_positions)
-        # self.aoa_weighted_dataset = AoAClusteredDataset(range(1000), dataset_path)
 
-    def __find_grid(self, rx_positions):
-        # Find the grid size and spacing that was used to generate the dataset
-        
+    def __find_grid(self, rx_positions): 
+        """
+        Find the grid size and spacing that was used to generate the dataset
+        """
         min_x = np.min(rx_positions[0, :])
         max_x = np.max(rx_positions[0, :])
         min_y = np.min(rx_positions[1, :])
@@ -123,8 +121,11 @@ class DatasetConsumer:
     
 
     def __real_to_grid(self, x, y):
-        # Find the index in the grid that the given point is in
-        # Return None if the point is not in the grid
+
+        """
+        Find the index in the grid that the given point is in
+        Return None if the point is not in the grid
+        """
         if x < self.grid_size[0] or x > self.grid_size[1]:
             return None
         if y < self.grid_size[2] or y > self.grid_size[3]:
@@ -137,7 +138,9 @@ class DatasetConsumer:
     
 
     def __grid_to_real_index(self, x, y):
-        # Find the real position of the given grid index
+        """
+        Find the real position of the given grid index
+        """ 
         x_real = self.grid_size[0] + (x * self.grid_spacing)
         y_real = self.grid_size[2] + (y * self.grid_spacing)
 
@@ -147,7 +150,9 @@ class DatasetConsumer:
 
 
     def __closest_real_index(self, x, y):
-        # Find the closest point in the rx_positions array
+        """
+        Find the closest point in the rx_positions array
+        """
         index = np.argmin(np.abs(self.rx_positions[0, :] - x) + np.abs(self.rx_positions[1, :] - y))
         return index
     
@@ -198,7 +203,7 @@ class DatasetConsumer:
         Generate straight paths in the rx_positions array.
 
         num_paths: Number of paths to generate
-        path_length_n: Length of each path in number of points
+        path_length_n: Length of each path in number of points, defaults to 20 points
         """
         print(f'Generating {num_paths} paths of length {path_length_n}')
         
@@ -269,7 +274,7 @@ class DatasetConsumer:
 
     def paths_to_dataset_mag_only(self, path_indices):
         """
-        Generate a torch dataset from the given path indices
+        Generate a torch dataset from the given path indices for just the magnitude
         Shape: (num_paths, path_length_n, 128)
         """
         # Use the indices to grab the CSI data for each point
@@ -280,7 +285,7 @@ class DatasetConsumer:
     
     def paths_to_dataset_phase_only(self, path_indices):
         """
-        Generate a torch dataset from the given path indices
+        Generate a torch dataset from the given path indices for just the phase
         Shape: (num_paths, path_length_n, 128)
         """
         # Use the indices to grab the CSI data for each point
@@ -291,7 +296,7 @@ class DatasetConsumer:
         
     def paths_to_dataset_path_loss_only(self, path_indices):
         """
-        Generate a torch dataset from the given path indices
+        Generate a torch dataset from the given path indices for just path loss
         Shape: (num_paths, path_length_n, 100)
         """
         # Use the indices to grab the CSI path lossdata for each point
@@ -303,7 +308,7 @@ class DatasetConsumer:
    
     def get_num_rays(self, path_indices):
         """
-        Returns the number of paths based on for each path provided by the path_indicies
+        Returns the number of rays based on each path provided by the path_indicies
         Shape: (num_paths, path_length_n, 100)
         """
         # ## To check:
@@ -319,8 +324,8 @@ class DatasetConsumer:
     
     def paths_to_dataset_mag_plus_rays(self, path_indices,scale=True):
         """
-        Generate a torch dataset from the given path indices
-        Shape: (num_paths, path_length_n, 128)
+        Generate a torch dataset from the given path indices for mags and rays
+        Shape: (num_paths, path_length_n, 129)
         """
         # Use the indices to grab the CSI data for each point
         csi_mags = self.csi_mags[:, path_indices]
@@ -335,13 +340,12 @@ class DatasetConsumer:
         # print(num_rays[0,:,:])
 
         # add the path for each path_indice, added to end of each path so dimension 
-        # becomes (num_paths,points, 129)
         csi_mags_num_paths = np.concatenate((csi_mags, num_rays), axis=-1)
         return csi_mags_num_paths
     
     def paths_to_dataset_rays_aoas(self, path_indices):
         """
-        Generate a torch dataset from the given path indices
+        Generate a torch dataset from the given path indices for ray angle of arrivals
         Shape: (num_paths, path_length_n, num_rays)
         """
         # Use the indices to grasb the positions for each point
@@ -479,6 +483,7 @@ class DatasetConsumer:
     def paths_to_dataset_rays_aoas_trig(self, path_indices, pad = 0):
         """
         Generate a torch dataset from the given path indices 
+        for the angle of arrivals azimuth cos, azimuth sin, elevation cos, elevation sin
         """
         # Use the indices to grab the positions for each point
         cprint.info(f'self.ray_aoas.shape {self.ray_aoas.T.shape}')
@@ -504,7 +509,7 @@ class DatasetConsumer:
         """
         Generate a torch dataset from the given path indices to contain
         the mags, number of rays, and aoa average 
-        Shape: (num_paths, path_length_n, 128)
+        Shape: (num_paths, path_length_n, 130)
         """
         # Use the indices to grab the CSI data for each point
         csi_mags = self.csi_mags[:, path_indices]
@@ -528,7 +533,6 @@ class DatasetConsumer:
         """
         Generate a torch dataset from the given path indices to contain
         the mags, number of rays, and aoa average 
-        Shape: (num_paths, path_length_n, 128)
         """
         # Use the indices to grab the CSI data for each point
         csi_mags = self.csi_mags[:, path_indices]
@@ -630,7 +634,7 @@ class DatasetConsumer:
         Generate a torch dataset from the given path indices to contain
         the csi mags, cos and sin of the angle of attacks, 
         and corresponing magnitude of cluster (r)
-        Shape: (num_paths, path_length_n, ___) Expecting this to have shape 151 OR 162
+        Shape: (num_paths, path_length_n, 161) 
         """
         # Use the indices to grab the CSI data for each point
         csi_mags = self.csi_mags[:, path_indices]
@@ -866,7 +870,11 @@ class DatasetConsumer:
             right_paths[i, path_length_n:] = right_path
 
         return (left_paths, center_paths, right_paths)
-    
+
+
+############
+# Section below is used to test the DatasetConsumer and its functions
+############
 
 DATASET = './machine_learning/data/dataset_0_5m_spacing.h5'
 d = DatasetConsumer(DATASET)
