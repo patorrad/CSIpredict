@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+=======
+"""
+Model Input: csi_mags
+"""
+>>>>>>> vibha
 import datetime
 import h5py
 import numpy as np
@@ -24,24 +30,43 @@ from utils import watts_to_dbm, get_scaler, dbm_to_watts
 
 
 # for hidden_size in [8, 16, 32, 64, 128]:
+<<<<<<< HEAD
 for scaler_type in ['quantiletransformer-gaussian']: #['minmax', 'power_yeo-johnson', 'quantiletransformer-gaussian', 'quantiletransformer-uniform']:
+=======
+for scaler_type in ['quantiletransformer-gaussian']: # ,'minmax', 'quantiletransformer-uniform']: #, 'yeo-johnson',]:
+>>>>>>> vibha
     DEBUG = True
     TENSORBOARD = True
     SCALER = scaler_type
     SAVE_PATH = './machine_learning/models/model.pth'
+<<<<<<< HEAD
     NUM_PATHS = 5000
     PATH_LENGTH = 54
     NUM_PREDICTIONS = 5
     FREQ_BINS = 55
     NUM_FUTURE_STEPS = 0
+=======
+    NUM_PATHS = 25000
+    PATH_LENGTH = 100
+    NUM_PREDICTIONS = 20
+    FREQ_BINS = 128
+    NUM_FUTURE_STEPS = 2
+>>>>>>> vibha
 
     # Hyperparameters
     batch_size = 10000
     shuffle = True
+<<<<<<< HEAD
     input_size = FREQ_BINS # Same as FREQ_BINS
     hidden_size = 64
     num_layers = 5
     output_size = FREQ_BINS
+=======
+    input_size = 128 # Same as FREQ_BINS
+    hidden_size = 64
+    num_layers = 5
+    output_size = 128
+>>>>>>> vibha
     sequence_length = PATH_LENGTH - NUM_PREDICTIONS #9
     learning_rate = 0.005
     dropout = .2
@@ -55,11 +80,16 @@ for scaler_type in ['quantiletransformer-gaussian']: #['minmax', 'power_yeo-john
                     'dropout_prob' : dropout,
                     'num_pred' : NUM_PREDICTIONS}
 
+<<<<<<< HEAD
     DATASET = 'dataset_0_5m_spacing.h5'
+=======
+    DATASET = './machine_learning/data/dataset_0_5m_spacing.h5'
+>>>>>>> vibha
     d = DatasetConsumer(DATASET)
     d.print_info()
 
     # Scale mag data
+<<<<<<< HEAD
 
     d.csi_mags = watts_to_dbm(d.csi_mags) # Convert to dBm
     
@@ -178,6 +208,131 @@ for scaler_type in ['quantiletransformer-gaussian']: #['minmax', 'power_yeo-john
             if TENSORBOARD: writer.add_scalar("losses/val_loss", val_loss.item(), epoch)
 
 
+=======
+    d.csi_mags = watts_to_dbm(d.csi_mags) # Convert to dBm
+    scaler = get_scaler(SCALER)
+    cprint(f'SCALER: {scaler}')  # Print type of scaler used
+    scaler.fit(d.csi_mags.T)
+    d.csi_mags = d.scale(scaler.transform, d.csi_mags.T).T
+
+    # Find paths
+    d.csi_phases = d.unwrap(d.csi_phases)
+    paths = d.generate_straight_paths(NUM_PATHS, PATH_LENGTH)
+
+    # Currently only using the dataset_mag for this model 
+    dataset_mag = d.paths_to_dataset_mag_only(paths)
+    dataset_phase = d.paths_to_dataset_phase_only(paths)
+    dataset_positions = d.paths_to_dataset_positions(paths)
+
+    # # Convert 'split_sequences' to a PyTorch tensor
+    dataset_mag = torch.from_numpy(dataset_mag)
+    # Split dataset into train, val and test
+    X_train, X_test, y_train, y_test = train_test_split(dataset_mag[:,:sequence_length,:], 
+                                                        dataset_mag[:,sequence_length:(sequence_length + NUM_PREDICTIONS),:].squeeze(), 
+                                                        train_size = 0.85, 
+                                                        shuffle=False)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, 
+                                                      y_train, 
+                                                      train_size = 0.8, 
+                                                      shuffle=False)
+
+    # Dataset
+    train = TensorDataset(X_train, y_train)
+    validate = TensorDataset(X_val, y_val)
+    test = TensorDataset(X_test, y_test)
+
+    # Create a data loader
+    train_dataloader = DataLoader(train, batch_size=batch_size, shuffle=shuffle)
+    validate_dataloader = DataLoader(validate, batch_size=batch_size, shuffle=shuffle)
+    test_dataloader = DataLoader(test, batch_size=batch_size, shuffle=shuffle)
+
+    # Loop through the data using the data loader
+    for i, batch in enumerate(train_dataloader, 0):
+        cprint(f'Batch {i} has size {batch[0].shape[0]}')  # Check the batch size
+
+
+    def get_model(model, model_params):
+        models = {
+            "rnn": RNN,
+            "lstm": LSTM,
+            "gru": GRU,
+        }
+        return models.get(model.lower())(**model_params)
+
+    layout = {
+        "ABCDE": {
+            "loss": ["Multiline", ["losses/running_train_loss", "losses/running_val_loss", "losses/test_loss"]],
+            "accuracy": ["Multiline", ["accuracy_val/mae", "accuracy_val/rmse", "accuracy_val/r2"]],
+        },
+    }
+    current = datetime.datetime.now()
+    if TENSORBOARD:
+        writer = SummaryWriter(f"run_25000Paths/{model_type}_{num_epochs}_{num_layers}_{hidden_size}_{learning_rate}_{dropout}_{NUM_PATHS}_{batch_size}_{SCALER}_{current.month}-{current.day}-{current.hour}:{current.minute}")
+        writer.add_custom_scalars(layout)
+
+    # Create a simple RNN model
+    model = get_model(model_type, model_params)
+
+    # Loss and optimizer
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+    # Learning rate adjustment
+    # decay_lr_lambda = lambda epoch: 0.2 if optimizer.param_groups[0]['lr'] < 0.0001 else 0.915 ** (epoch // 5)
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=decay_lr_lambda)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
+
+    # Training loop
+    model = model.float()
+    i = 0
+    j = 0
+    for epoch in range(num_epochs):
+        running_train_loss = 0.0
+        running_val_loss = 0
+
+        model.train()
+        for batch in train_dataloader:
+            sequences, targets = batch
+            outputs = model(sequences.float())
+            loss = criterion(outputs, targets.float())
+            
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            running_train_loss += loss.item()
+            if TENSORBOARD: writer.add_scalar("losses/running_train_loss", loss.item(), i)
+            i += 1
+        ## Adding this line to track epoch
+        if TENSORBOARD: writer.add_scalar("losses/train_loss", loss.item(), epoch)
+
+        model.eval()
+        with torch.no_grad():
+            for batch in validate_dataloader:
+                sequences, targets = batch
+                outputs = model(sequences.float())
+                val_loss = criterion(outputs, targets.float())
+                running_val_loss += val_loss.item()
+                if TENSORBOARD: writer.add_scalar("losses/running_val_loss", val_loss.item(), j)
+
+                # Create dataframe
+                df_result = pd.DataFrame({
+                    'value': scaler.inverse_transform(targets.reshape(-1,128)).flatten(), #targets.flatten(),  # flatten() is used to convert the arrays to 1D if they're not already
+                    'prediction': scaler.inverse_transform(outputs.reshape(-1,128)).flatten() #outputs.flatten()
+                })
+
+                # Calcuate metrics
+                result_metrics = calculate_metrics(df_result)
+                if TENSORBOARD: 
+                    writer.add_scalar("accuracy_val/mae", result_metrics['mae'], j)
+                    writer.add_scalar("accuracy_val/rmse", result_metrics['rmse'], j)
+                    writer.add_scalar("accuracy_val/r2", result_metrics['r2'], j)
+                j += 1
+            ## Adding this line to track epoch
+            if TENSORBOARD: writer.add_scalar("losses/val_loss", val_loss.item(), epoch)
+
+
+>>>>>>> vibha
         if epoch % 100 == 99:
             print(f'[{epoch + 1}, {num_epochs}] loss: {running_train_loss:.3f}')
             running_train_loss = 0.0
@@ -215,8 +370,13 @@ for scaler_type in ['quantiletransformer-gaussian']: #['minmax', 'power_yeo-john
 
     # Create dataframe
     df_result = pd.DataFrame({
+<<<<<<< HEAD
         'value': scaler.inverse_transform(y_test.reshape(-1,FREQ_BINS)).flatten(),  # flatten() is used to convert the arrays to 1D if they're not already
         'prediction': scaler.inverse_transform(predictions[0].reshape(-1,FREQ_BINS)).flatten()
+=======
+        'value': scaler.inverse_transform(y_test.reshape(-1,128)).flatten(),  # flatten() is used to convert the arrays to 1D if they're not already
+        'prediction': scaler.inverse_transform(predictions[0].reshape(-1,128)).flatten()
+>>>>>>> vibha
     })
 
     # Calcuate metrics
@@ -226,7 +386,11 @@ for scaler_type in ['quantiletransformer-gaussian']: #['minmax', 'power_yeo-john
 
     if DEBUG:
         # Sanity check
+<<<<<<< HEAD
         for i in range(5):
+=======
+        for i in range(10):
+>>>>>>> vibha
             # To use the trained model for prediction, you can pass new sequences to the model:
             rand = torch.randint(0, X_test.shape[0], (1,))
             new_input = X_test[rand,:]
@@ -241,7 +405,11 @@ for scaler_type in ['quantiletransformer-gaussian']: #['minmax', 'power_yeo-john
             prediction = model(new_input.to(torch.float32), future=NUM_FUTURE_STEPS)
             prediction_log = scaler.inverse_transform(prediction.squeeze().detach().numpy())
             prediction_linear = dbm_to_watts(prediction_log)
+<<<<<<< HEAD
             cprint.ok(f'prediction: {prediction.shape}')    
+=======
+            
+>>>>>>> vibha
             # Graphs
             fig, axs = plt.subplots(11, figsize=(10,10))
             plt.subplots_adjust(hspace=1.25)
@@ -282,6 +450,7 @@ for scaler_type in ['quantiletransformer-gaussian']: #['minmax', 'power_yeo-john
             axs[8].plot(time_pred, prediction_linear[:NUM_PREDICTIONS,0], marker='.',  color='orange')
             axs[8].plot(time_future, prediction_linear[NUM_PREDICTIONS:,0], marker='.', color='red')
             axs[8].set_title("Frequency 0 Descaled")
+<<<<<<< HEAD
             # axs[9].plot(np.concatenate((new_input.squeeze()[:,64],ground_truth.squeeze()[:,64])))
             # axs[9].plot(time_pred, prediction.detach().numpy().squeeze()[:NUM_PREDICTIONS,64], marker='.',  color='orange')
             # axs[9].plot(time_future, prediction.detach().numpy().squeeze()[NUM_PREDICTIONS:,64], marker='.', color='red')
@@ -290,6 +459,16 @@ for scaler_type in ['quantiletransformer-gaussian']: #['minmax', 'power_yeo-john
             # axs[10].plot(time_pred, prediction.detach().numpy().squeeze()[:NUM_PREDICTIONS,127], marker='.',  color='orange')
             # axs[10].plot(time_future, prediction.detach().numpy().squeeze()[NUM_PREDICTIONS:,127], marker='.', color='red')
             # axs[10].set_title("Frequency 127")
+=======
+            axs[9].plot(np.concatenate((new_input.squeeze()[:,64],ground_truth.squeeze()[:,64])))
+            axs[9].plot(time_pred, prediction.detach().numpy().squeeze()[:NUM_PREDICTIONS,64], marker='.',  color='orange')
+            axs[9].plot(time_future, prediction.detach().numpy().squeeze()[NUM_PREDICTIONS:,64], marker='.', color='red')
+            axs[9].set_title("Frequency 64")
+            axs[10].plot(np.concatenate((new_input.squeeze()[:,127],ground_truth.squeeze()[:,127])))
+            axs[10].plot(time_pred, prediction.detach().numpy().squeeze()[:NUM_PREDICTIONS,127], marker='.',  color='orange')
+            axs[10].plot(time_future, prediction.detach().numpy().squeeze()[NUM_PREDICTIONS:,127], marker='.', color='red')
+            axs[10].set_title("Frequency 127")
+>>>>>>> vibha
             # plt.show()
             if TENSORBOARD: writer.add_figure(f'Comparison {i}', fig, global_step=0)
             plt.close(fig)
@@ -304,4 +483,9 @@ for scaler_type in ['quantiletransformer-gaussian']: #['minmax', 'power_yeo-john
     final_learning_rate = optimizer.param_groups[0]['lr']
     cprint.ok(f'Final learning rate {final_learning_rate}')
 
+<<<<<<< HEAD
 # # NOTE Run "tensorboard --logdir runs" to see results
+=======
+# # NOTE Run "tensorboard --logdir runs" to see results
+# # runs is a file name and will change based on the filepath set for model results
+>>>>>>> vibha
