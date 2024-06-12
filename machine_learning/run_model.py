@@ -26,10 +26,10 @@ y_test = torch.load(f'./machine_learning/models/y_test_{model_type}.pt')
 
 # Hyperparameters
 input_size = 128
-hidden_size = 32
+hidden_size = 64
 num_layers = 5
 output_size = 128
-sequence_length = 9
+sequence_length = 62
 learning_rate = 0.005
 dropout = .2
 num_epochs = 100

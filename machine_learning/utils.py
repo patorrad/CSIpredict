@@ -56,7 +56,8 @@ def get_scaler(scaler):
     return scalers.get(scaler.lower())
 
 def load_and_partition_RF_data(
-    data_path: Path, seq_length: int = 100
+    data_path: Path, seq_length: int = 100, NUM_PATHS: int = 500, PATH_LENGTH: int = 20, DATASET: str = 'dataset_0_5m_spacing.h5',
+    SCALER: str = 'quantiletransformer-gaussian'
 ) -> 'tuple[np.ndarray, int]':
     """Loads the given data and paritions it into sequences of equal length.
 
@@ -68,15 +69,12 @@ def load_and_partition_RF_data(
         tuple[np.ndarray, int]: tuple of generated sequences and number of
             features in dataset
     """
-    NUM_PATHS = 5000
-    PATH_LENGTH = 20
-    DATASET = 'dataset_0_5m_spacing.h5'
     d = DatasetConsumer(DATASET)
     d.print_info()
 
     # Scale mag data
     d.csi_mags = watts_to_dbm(d.csi_mags) # Convert to dBm
-    scaler = get_scaler('minmax')
+    scaler = get_scaler(SCALER)
     scaler.fit(d.csi_mags.T)
     d.csi_mags = d.scale(scaler.transform, d.csi_mags.T).T
 
@@ -88,7 +86,7 @@ def load_and_partition_RF_data(
 
     num_features = sequences.shape[2]
 
-    return sequences, num_features
+    return sequences, num_features, scaler
 
 
 def make_datasets(sequences: np.ndarray) -> 'tuple[TensorDataset, TensorDataset]':
@@ -111,6 +109,7 @@ def visualize(
     pred: torch.Tensor,
     pred_infer: torch.Tensor,
     idx=0,
+    writer=None,
 ) -> None:
     """Visualizes a given sample including predictions.
 
@@ -124,15 +123,18 @@ def visualize(
     """
     x = np.arange(src.shape[1] + tgt.shape[1])
     src_len = src.shape[1]
-
+    fig = plt.figure()
     plt.plot(x[:src_len], src[idx].cpu().detach(), "bo-", label="src")
     plt.plot(x[src_len:], tgt[idx].cpu().detach(), "go-", label="tgt")
     plt.plot(x[src_len:], pred[idx].cpu().detach(), "ro-", label="pred")
     plt.plot(x[src_len:], pred_infer[idx].cpu().detach(), "yo-", label="pred_infer")
 
     plt.legend()
-    plt.show()
-    # plt.clf()
+    if writer:
+        writer.add_figure(f'Comparison {idx}', fig, global_step=0)
+        plt.close()
+    else:
+        plt.show()
 
 
 def split_sequence(
@@ -185,6 +187,37 @@ def move_to_device(device: torch.Tensor, *tensors: torch.Tensor) -> 'list[torch.
         else:
             moved_tensors.append(tensor)
     return moved_tensors
+
+class EarlyStopping:
+    def __init__(self, patience=7, verbose=False, delta=0):
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
+
+    def __call__(self, val_loss, model, path):
+        score = -val_loss
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model, path)
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model, path)
+            self.counter = 0
+
+    def save_checkpoint(self, val_loss, model, path):
+        if self.verbose:
+            print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+        torch.save(model.state_dict(), path+'/'+'checkpoint.pth')
+        self.val_loss_min = val_loss
 
 # class TransformerDataset(Dataset):
 #     """
