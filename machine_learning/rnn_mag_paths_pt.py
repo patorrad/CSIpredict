@@ -1,3 +1,6 @@
+"""
+This file uses the models_old file. For more recent implementation refer to rnn_mag_plus_rays.py.
+"""
 import datetime
 import h5py
 import numpy as np

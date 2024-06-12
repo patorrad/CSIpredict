@@ -1,3 +1,6 @@
+"""
+Model Input: csi_mags
+"""
 import datetime
 import h5py
 import numpy as np
@@ -69,6 +72,8 @@ for scaler_type in ['quantiletransformer-gaussian']: # ,'minmax', 'quantiletrans
     # Find paths
     d.csi_phases = d.unwrap(d.csi_phases)
     paths = d.generate_straight_paths(NUM_PATHS, PATH_LENGTH)
+
+    # Currently only using the dataset_mag for this model 
     dataset_mag = d.paths_to_dataset_mag_only(paths)
     dataset_phase = d.paths_to_dataset_phase_only(paths)
     dataset_positions = d.paths_to_dataset_positions(paths)
@@ -308,3 +313,4 @@ for scaler_type in ['quantiletransformer-gaussian']: # ,'minmax', 'quantiletrans
     cprint.ok(f'Final learning rate {final_learning_rate}')
 
 # # NOTE Run "tensorboard --logdir runs" to see results
+# # runs is a file name and will change based on the filepath set for model results

@@ -1,3 +1,6 @@
+"""
+Model Inputs: csi_mags, # of rays
+"""
 import datetime
 import h5py
 import numpy as np
@@ -24,7 +27,7 @@ from utils import watts_to_dbm, get_scaler, dbm_to_watts
 
 
 # for hidden_size in [8, 16, 32, 64, 128]:
-for scaler_type in ['quantiletransformer-gaussian']: #, 'minmax', 'quantiletransformer-uniform']: #, 'yeo-johnson',]:
+for scaler_type in ['quantiletransformer-gaussian']: 
     DEBUG = True
     TENSORBOARD = True
     SCALER = scaler_type
@@ -320,3 +323,4 @@ for scaler_type in ['quantiletransformer-gaussian']: #, 'minmax', 'quantiletrans
     cprint.ok(f'Final learning rate {final_learning_rate}')
 
 # # NOTE Run "tensorboard --logdir runs" to see results
+# # runs is a file name and will change based on the filepath set for model results

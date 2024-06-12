@@ -1,3 +1,7 @@
+"""
+Model Inputs: csi_mags, # of rays, and clustered AoA average (weighted by magnitude) at that point
+"""
+
 import datetime
 import h5py
 import numpy as np
@@ -69,6 +73,7 @@ for scaler_type in ['quantiletransformer-gaussian', 'quantiletransformer-uniform
     # Find paths
     d.csi_phases = d.unwrap(d.csi_phases)
     paths = d.generate_straight_paths(NUM_PATHS, PATH_LENGTH)
+    # Using dataset consumer to get inputs
     dataset_mag_rays_aoas = d.paths_to_dataset_mag_rays_weighted_aoas(paths) # will use the scaled mag data and attach the number of ray hits, scaled by 1/100
 
 
@@ -320,3 +325,4 @@ for scaler_type in ['quantiletransformer-gaussian', 'quantiletransformer-uniform
     cprint.ok(f'Final learning rate {final_learning_rate}')
 
 # # NOTE Run "tensorboard --logdir runs" to see results
+# # runs is a file name and will change based on the filepath set for model results

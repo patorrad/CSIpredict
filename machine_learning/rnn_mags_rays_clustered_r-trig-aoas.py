@@ -1,3 +1,6 @@
+"""
+Model Inputs: csi_mags, # of rays, rcos(theta), rsin(theta)
+"""
 import datetime
 import h5py
 import numpy as np
@@ -69,6 +72,7 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     # Find paths
     d.csi_phases = d.unwrap(d.csi_phases)
     paths = d.generate_straight_paths(NUM_PATHS, PATH_LENGTH)
+    # Using dataset consumer to get inputs
     dataset_mag_rays_aoas = d.paths_to_dataset_mag_rays_weighted_aoas_r_trig(paths) # will use the scaled mag data and attach the number of ray hits, scaled by 1/100
 
 

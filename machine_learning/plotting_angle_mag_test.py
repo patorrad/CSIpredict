@@ -1,3 +1,11 @@
+
+"""
+This file is scratch work for understanding the dataset and practicing clustering angle of arrivals 
+with different algorithms. This can be used for testing purposes of one point (find comment "****" 
+for changing the point). For the finalized version of clustering angle of arrivals
+refer to file cluster_aoas.py
+"""
+
 import h5py
 import numpy as np
 import random
@@ -17,13 +25,6 @@ from sklearn.neighbors import LocalOutlierFactor
 
 DATASET = './machine_learning/data/dataset_0_5m_spacing.h5'
 d = DatasetConsumer(DATASET)
-
-"""
-This file is scratch work for understanding the dataset and practicing clustering angle of arrivals 
-with different algorithms. This can be used for testing purposes of one point (find comment "****" 
-for changing the point). For the finalized version of clustering angle of arrivals
-refer to file cluster_aoas.py
-"""
 
 # Getting values of mags, aoas, mags_fromloss using the simulation dataset
 mags = d.csi_mags

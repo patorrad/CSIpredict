@@ -532,7 +532,7 @@ class DatasetConsumer:
     def paths_to_dataset_mag_rays_weighted_aoas(self, path_indices,scale=True):
         """
         Generate a torch dataset from the given path indices to contain
-        the mags, number of rays, and aoa average 
+        the mags, number of rays, and aoa average of clusters
         """
         # Use the indices to grab the CSI data for each point
         csi_mags = self.csi_mags[:, path_indices]
@@ -579,7 +579,7 @@ class DatasetConsumer:
     def paths_to_dataset_mag_rays_weighted_aoas_r_trig(self, path_indices,scale=True):
         """
         Generate a torch dataset from the given path indices to contain
-        the mags, rcos and rsin. r is the corresponding magnitude of that cluster. 
+        the # of rays, mags, rcos and rsin. r is the corresponding magnitude of that cluster. 
         Shape: (num_paths, path_length_n, 150)
         """
         # Use the indices to grab the CSI data for each point

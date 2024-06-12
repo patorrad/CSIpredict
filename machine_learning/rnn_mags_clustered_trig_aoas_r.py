@@ -1,3 +1,6 @@
+"""
+Model Inputs: csi_mags, cos(theta), sin(theta), r
+"""
 import datetime
 import h5py
 import numpy as np
@@ -20,11 +23,8 @@ from dataset_consumer import DatasetConsumer
 
 from utils import watts_to_dbm, get_scaler, dbm_to_watts
 
-# np.set_printoptions(threshold=sys.maxsize)
-
-
 # for hidden_size in [8, 16, 32, 64, 128]:
-for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-uniform', 'minmax']: #, 'yeo-johnson',]:
+for scaler_type in ['quantiletransformer-gaussian']:
     DEBUG = True
     TENSORBOARD = True
     SCALER = scaler_type
@@ -69,6 +69,8 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     # Find paths
     d.csi_phases = d.unwrap(d.csi_phases)
     paths = d.generate_straight_paths(NUM_PATHS, PATH_LENGTH)
+
+    # Using dataset consumer to get inputs
     dataset_mag_rays_aoas = d.paths_to_dataset_mag_weighted_aoas_trig_r(paths) # will use the scaled mag data and attach the number of ray hits, scaled by 1/100
 
 
@@ -320,3 +322,4 @@ for scaler_type in ['quantiletransformer-gaussian']:#, 'quantiletransformer-unif
     cprint.ok(f'Final learning rate {final_learning_rate}')
 
 # # NOTE Run "tensorboard --logdir runs" to see results
+# # runs is a file name and will change based on the filepath set for model results
